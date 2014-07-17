@@ -201,17 +201,26 @@ var autoExpedition = function(frame)
 			var opponent = frame.expedition.matchList[index];
 			if (opponent.result > 1)
 			{
-				var threadDegree = (frame.player.myData.threadDegree == 1) ? "强敌":"普通";
-				if (opponent.vsRank > 11 && (opponent.vsRank > frame.player.myData.rank))
-				{
-					frame.console.log(frame.player.myData.lordName+" 远征. 跳过: "+frame.player.myData.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
-					continue;
-				}
-				if (opponent.vsRank - frame.player.myData.rank > 5)
-				{
-					frame.console.log(frame.player.myData.lordName+" 远征. 跳过: "+frame.player.myData.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
-					continue;
-				}
+				do {
+					if (opponent.threadDegree == 1 && opponent.eventItemId == 3) {
+						var str = playerList[playerIndex] + ". 强敌+名茶!";
+						window.alert("str");
+						frame.console.log(str);
+						break;
+					}
+
+					var threadDegree = (opponent.threadDegree == 1) ? "强敌":"普通";
+					if (opponent.vsRank > 11 && (opponent.vsRank > frame.player.myData.rank))
+					{
+						frame.console.log(frame.player.myData.lordName+" 远征. 跳过: "+frame.player.myData.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+						continue;
+					}
+					if (opponent.vsRank - frame.player.myData.rank > 5)
+					{
+						frame.console.log(frame.player.myData.lordName+" 远征. 跳过: "+frame.player.myData.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+						continue;
+					}
+				} while (false);
 
 				// Arrange the next expedition
 				frame.setTimeout(doChallenge, 2000);
