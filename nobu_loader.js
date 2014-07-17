@@ -194,36 +194,34 @@ var autoExpedition = function(frame)
 {
 	var doChallenge = function() {
  		if (!frame.expedition || frame.expedition.stamina == 0)
-			return;
+			return false;
 
 		for (var index =0; index <  frame.expedition.matchList.length - 1; ++index)
 		{
+			var me = frame.player.myData;
 			var opponent = frame.expedition.matchList[index];
 			if (opponent.result > 1)
 			{
 				do {
 					if (opponent.threadDegree == 1 && opponent.eventItemId == 3) {
-						var str = playerList[playerIndex] + ". 强敌+名茶!";
+						var str = "远征. " + playerList[playerIndex] + ". 强敌+名茶!";
 						window.alert("str");
 						frame.console.log(str);
 						break;
 					}
 
 					var threadDegree = (opponent.threadDegree == 1) ? "强敌":"普通";
-					if (opponent.vsRank > 11 && (opponent.vsRank > frame.player.myData.rank))
+					if (opponent.vsRank > 10 && (opponent.vsRank > me.rank))
 					{
-						frame.console.log(frame.player.myData.lordName+" 远征. 跳过: "+frame.player.myData.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+						frame.console.log("远征. " + me.lordName+". 跳过: "+me.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
 						continue;
 					}
-					if (opponent.vsRank - frame.player.myData.rank > 5)
+					if (opponent.vsRank - me.rank > 5)
 					{
-						frame.console.log(frame.player.myData.lordName+" 远征. 跳过: "+frame.player.myData.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+						frame.console.log("远征. " + me.lordName+". 跳过: "+me.rank+" vs "+threadDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
 						continue;
 					}
 				} while (false);
-
-				// Arrange the next expedition
-				frame.setTimeout(doChallenge, 2000);
 
 				// Record current expedition result
 				frame.setTimeout(function() {
@@ -232,18 +230,18 @@ var autoExpedition = function(frame)
 					frame.console.log(index);
 					frame.console.log(op);
 					var result = (op.round1stResult + op.round2ndResult + op.round3rdResult);
-					var resultStr = "结果: "+(3-result)+"胜"+result+"负";
-					frame.console.log(frame.player.myData.lordName+" 远征. 进行: "+frame.player.myData.rank+" vs "+op.vsPlayerName+" "+threadDegree+" lvl "+op.vsRank+". "+resultStr+" 活动物品: "+opponent.eventItemId);
-				}, 2000);
+					var resultStr = ". 结果: "+(3-result)+"胜"+result+"负";
+					frame.console.log("远征. " + me.lordName + ". 进行: " + me.rank + " vs " + op.vsPlayerName + " "+ op.threadDegree + " lvl " + op.vsRank + resultStr +". 活动物品: "+opponent.eventItemId);
+				}, 3000);
 
 				frame.expedition.stamina -= 1;
 				opponent.result = -2;
 				frame.expedition.challenge(opponent.vsPlayerId);
-				return;
+				return true;
 			}
 		}
-		frame.setTimeout(doChallenge, 4000);
 		frame.expedition.listUpAgain();
+		return true;
 	};
 
 	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
@@ -257,11 +255,17 @@ var autoExpedition = function(frame)
 	var startChallenge = function() {
 		frame.setTimeout(function() {
 	    	frame.expedition.listUp();
+		}, 2000);
+		frame.setTimeout(function () {
+			var result = doChallenge();
+			if (result) {
+				// Arrange the next expedition
+				frame.setTimeout(locateExpedition, 2000);
+			}
 		}, 3000);
-		frame.setTimeout(doChallenge, 5000);
 	};
 
-	var locateExpedition = function() {
+	var doLocateExpedition = function() {
 	    frame.expedition = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.stamina != "undefined"; });
 	    if (frame.expedition == null) {
 			var movie = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.movieEnd != "undefined"; });
@@ -269,11 +273,8 @@ var autoExpedition = function(frame)
 				frame.console.log("Find expedition movie!");
 				frame.setTimeout(function () {
 					movie.tap();
-					frame.setTimeout(function () {
-						frame.location="http://mn.mobcast.jp/mn/#/expedition";						
-					}, 1000);
 				}, 7000);
-				frame.setTimeout(locateExpedition, 10000);
+				frame.setTimeout(locateExpedition, 9000);
 			}
 	    }
 	    else {
@@ -281,8 +282,33 @@ var autoExpedition = function(frame)
 	    }
 	};
 
-	frame.setTimeout(locateExpedition, 3000);
-}
+	var locateExpedition = function() {
+		frame.location="http://mn.mobcast.jp/mn/#/expedition?"+Math.random();
+		frame.setTimeout(doLocateExpedition, 2000);
+	};
+
+	var getChakiPoints = function() {
+		frame.location = "http://mn.mobcast.jp/mn/#/event/chaki/award";
+		frame.setTimeout(function() {
+			frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+			if (frame.chaki == null) {
+				var movie = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.movieEnd != "undefined"; });
+				if (movie != null)
+					frame.setTimeout(locateExpedition, 1000);
+				else
+					frame.setTimeout(getChakiPoints, 1000);
+				return;
+			}
+
+			var me = frame.player.myData;
+			frame.console.log("远征. " + me.lordName + ". 茶器数: " + frame.chaki.teaSets);
+			frame.console.log("远征. " + me.lordName + ". 友好度: " + frame.chaki.friendlyPoints);
+			frame.setTimeout(locateExpedition, 2000);
+		}, 3000);
+	};
+
+	frame.setTimeout(getChakiPoints, 3000);
+};
 
 var autoLogin = function(frame, nextLogin)
 {
@@ -298,6 +324,7 @@ var autoLogin = function(frame, nextLogin)
 };
 
 var autoPlay = function(nextLogin) {
+	document.getElementById("playerIndex").value = playerIndex;
 	document.getElementById('userid').innerText = playerIndex;
 	document.getElementById('username').innerText = playerList[playerIndex];
 
