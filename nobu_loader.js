@@ -204,23 +204,20 @@ var autoExpedition = function(frame)
 			// result. 0: won, 1: lost, 3: not done yet
 			if (opponent.result > 1)
 			{
-				do {
-					var threatDegree = (opponent.threatDegree == 1) ? "强敌":"普通";
-					if (opponent.threatDegree == 1 && opponent.eventItemId == 3) {
-						frame.console.log("远征. " + me.lordName+". 名茶!: "+me.rank+" vs "+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
-						break;
-					}
-					if (opponent.vsRank > 10 && (opponent.vsRank > me.rank))
-					{
-						frame.console.log("远征. " + me.lordName+". 跳过: "+me.rank+" vs "+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
-						continue;
-					}
-					if (opponent.vsRank - me.rank > 5)
-					{
-						frame.console.log("远征. " + me.lordName+". 跳过: "+me.rank+" vs "+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
-						continue;
-					}
-				} while (false);
+				var threatDegree = (opponent.threatDegree == 1) ? " 强敌":" 普通";
+				if (opponent.threatDegree == 1 && opponent.eventItemId == 3) {
+					frame.console.log("远征. " + me.lordName+". 名茶!: "+me.rank+" vs "+op.vsPlayerName+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+				}
+				else if (opponent.vsRank > 10 && (opponent.vsRank > me.rank))
+				{
+					frame.console.log("远征. " + me.lordName+". 跳过: "+me.rank+" vs "+op.vsPlayerName+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+					continue;
+				}
+				else if (opponent.vsRank - me.rank > 5)
+				{
+					frame.console.log("远征. " + me.lordName+". 跳过: "+me.rank+" vs "+op.vsPlayerName+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+					continue;
+				}
 
 				frame.expedition.stamina -= 1;
 				opponent.result = -2;
