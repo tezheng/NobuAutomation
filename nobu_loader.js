@@ -29,7 +29,7 @@ var initPlayerList = function(playerCount, playerCountYahoo) {
 	password = document.getElementById("password").value;
 	playerList = [
 					"tezheng1982@gmail.com", "tezhengchenhao@gmail.com"
-//					, "dummyedu@gmail.com", "dummyedu01@gmail.com", "dummyedu02@gmail.com", "dummyedu03@gmail.com", "dummedu@gmail.com"
+//					, "dummyedu@gmail.com", "dummyedu01@gmail.com", "dummyedu02@gmail.com", "dummyedu03@gmail.com", "dummedu04@gmail.com"
 	];
 	for (var i = 1; i <=playerCount; ++i) {
 		if (i < 10)
@@ -386,17 +386,11 @@ var nextPlayer = function() {
 };
 
 var newAccount = function() {
-	var timeRatio = document.getElementById("timeRatio").value;	
-
+	var timeRatio = document.getElementById("timeRatio").value;
+	var newUserURL = document.getElementById("newUserURL").value;
 	var game = createGame(newUserURL);
 
-	window.setTimeout(function() {
-		var frame = game.contentWindow;
-		frame.$("input[name='NAME']").val("モブ"+generatePasswords());
-		frame.$("form[name=frmMain]").submit();
-	}, 3000 * timeRatio);
-
-	window.setTimeout(function() {
+	var autoRun = function() {
 		var frame = game.contentWindow;
 
 		frame.autoTutorial = function () {
@@ -412,11 +406,65 @@ var newAccount = function() {
 		    frame.rootScope.tutorial.currentItemIndex=9;
 		    frame.tutorial.click();
 		    frame.setTimeout(frame.autoTutorial, 4000 * timeRatio);
-		    //frame.setTimeout(frame.autoTutorial, 5000);
 		}
 		else
 		{
 		    frame.setTimeout(frame.autoTutorial, 200);
 		}
-	}, 15000 * timeRatio);
+	};
+
+	var openGame = function() {
+		var frame = game.contentWindow;
+		frame.location = "http://mn.mobcast.jp/mn/#/";
+
+	    window.setTimeout(autoRun, 10000 * timeRatio);
+	};
+
+	var regist = function() {
+		var frame = game.contentWindow;
+		var button = frame.$("form[name='frmMain']");
+		if (!button) {
+			window.setTimeout(regist, 2000 * timeRatio);		
+			return;
+		}
+
+		button.submit();
+		window.setTimeout(openGame, 2000* timeRatio);
+	};
+
+	var createUser = function() {
+		var frame = game.contentWindow;
+		if (!frame) {
+			window.setTimeout(createUser, 2000 * timeRatio);
+			return;
+		}
+
+		var input = frame.$("input[name='NAME']");
+		if (!input) {
+			window.setTimeout(createUser, 2000 * timeRatio);
+			return;
+		}
+
+		input.val("モブ"+generatePasswords());
+		frame.$("form[name=frmMain]").submit();
+
+		window.setTimeout(regist, 2000 * timeRatio);		
+	};
+
+	var visit = function() {
+		var frame = game.contentWindow;
+		var button = frame.$("[name='INSTALL']");
+		if (!button) {
+			window.setTimeout(visit, 2000);
+			return;
+		}
+		var url = button.attr('onclick');
+		url = "location.href='http://gmpa.jp/" + url.substring(url.indexOf('regist'));
+		window.console.log(url);
+		button.attr('onclick', url);
+		button.click();
+
+		window.setTimeout(createUser, 2000 * timeRatio);
+	};
+	window.setTimeout(visit, 2000);
 };
