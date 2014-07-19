@@ -375,7 +375,7 @@ var autoPlay = function(nextLogin) {
 
 var start = function() {
 	initConfig();
-	initPlayerList(18, 20);
+	initPlayerList(18, 65);
 	window.console.log(playerList);
 
 	autoPlay(timeDelay * 1000 * timeRatio);
@@ -385,7 +385,7 @@ var nextPlayer = function() {
 	if (!playerList)
 	{
 		initConfig();
-		initPlayerList(18, 20);
+		initPlayerList(18, 65);
 		window.console.log(playerList);
 	}
 
