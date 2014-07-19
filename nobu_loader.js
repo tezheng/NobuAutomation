@@ -10,6 +10,25 @@
 // }
 //})()
 
+/*
+auto yahoo email register
+javascript:(
+(function() {
+var autoYahooEmail = function() {
+  document.getElementById('yid').value = "xiaotenobu";
+  document.getElementById('pw').value = "tzh20090706";
+  document.getElementById('pw2').value = "tzh20090706";
+  document.getElementById('postalCode_a').value = "1900155";
+  document.getElementById('male').checked = true;
+  document.getElementById('birth').value = "19820217";
+  document.getElementById('qa').value = "Beijing";
+  document.getElementById('numok').checked = false;
+};
+autoYahooEmail();
+})()
+)
+*/
+
 var loginURL = "http://user.mobcast.jp/login?guid=ON&return_to=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&sc=on";
 var newUserURL = "http://gmpa.jp/regist.php?gmpa=on&input=1&back_url=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&gid=23&sid=0";
 
