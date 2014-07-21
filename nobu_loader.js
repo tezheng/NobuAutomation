@@ -405,10 +405,6 @@ var nextPlayer = function() {
 };
 
 var newAccount = function() {
-	var timeRatio = document.getElementById("timeRatio").value;
-	var newUserURL = document.getElementById("newUserURL").value;
-	var game = createGame(newUserURL);
-
 	var autoRun = function() {
 		var frame = game.contentWindow;
 
@@ -418,8 +414,25 @@ var newAccount = function() {
 		};
 
 		frame.lastItemIndex = -1;	
+
+		var checkEnv = function () {
+			if (!frame.angular) {
+				frame.setTimeout(checkEnv, 2000);
+				return;
+			}
+
 		frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+			if (!frame.rootScope || !frame.rootScope.tutorial) {
+				frame.setTimeout(checkEnv, 2000);
+				return;				
+			}
+
 		frame.tutorial = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
+			if (!frame.tutorial) {
+				frame.setTimeout(checkEnv, 2000);
+				return;				
+			}
+
 		if (frame.rootScope.tutorial.currentPhaseIndex == 0)
 		{
 		    frame.rootScope.tutorial.currentItemIndex=9;
@@ -431,59 +444,51 @@ var newAccount = function() {
 		    frame.setTimeout(frame.autoTutorial, 200);
 		}
 	};
+		checkEnv();
+	};
 
 	var openGame = function() {
 		var frame = game.contentWindow;
 		frame.location = "http://mn.mobcast.jp/mn/#/";
-
-	    window.setTimeout(autoRun, 10000 * timeRatio);
 	};
 
 	var regist = function() {
 		var frame = game.contentWindow;
 		var button = frame.$("form[name='frmMain']");
-		if (!button) {
-			window.setTimeout(regist, 2000 * timeRatio);		
-			return;
-		}
-
 		button.submit();
-		window.setTimeout(openGame, 2000* timeRatio);
 	};
 
 	var createUser = function() {
 		var frame = game.contentWindow;
-		if (!frame) {
-			window.setTimeout(createUser, 2000 * timeRatio);
-			return;
-		}
-
 		var input = frame.$("input[name='NAME']");
-		if (!input) {
-			window.setTimeout(createUser, 2000 * timeRatio);
-			return;
-		}
-
 		input.val("モブ"+generatePasswords());
 		frame.$("form[name=frmMain]").submit();
-
-		window.setTimeout(regist, 2000 * timeRatio);		
 	};
 
 	var visit = function() {
 		var frame = game.contentWindow;
 		var button = frame.$("[name='INSTALL']");
-		if (!button) {
-			window.setTimeout(visit, 2000);
-			return;
-		}
+
 		var url = button.attr('onclick');
 		url = "location.href='http://gmpa.jp/" + url.substring(url.indexOf('regist'));
 		window.console.log(url);
+
 		button.attr('onclick', url);
 		button.click();
-
-		window.setTimeout(createUser, 2000 * timeRatio);
 	};
-	window.setTimeout(visit, 2000);
+
+	var timeRatio = document.getElementById("timeRatio").value;
+	var newUserURL = document.getElementById("newUserURL").value;
+	var count = document.getElementById("count").value;
+
+	for (var i = 0; i < count; i++) {
+		window.setTimeout(function() {
+			var game = createGame(newUserURL);
+			window.setTimeout(visit, 2000 * timeRatio);
+			window.setTimeout(createUser, 4000 * timeRatio);
+			window.setTimeout(regist, 6000 * timeRatio);
+			window.setTimeout(openGame, 8000 * timeRatio);
+			window.setTimeout(autoRun, 18000 * timeRatio);
+		}, i * 60000 * timeRatio);
+	};
 };
