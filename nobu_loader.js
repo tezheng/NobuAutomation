@@ -1,4 +1,4 @@
-//(function(){
+	//(function(){
 //window.doLogin = function() {
 // var doLogin = function() {
 // 	window.setTimeout(function() {
@@ -330,8 +330,151 @@ var autoExpedition = function(frame)
 		return;
 
 	frame.console.log("远征. " + playerList[playerIndex]);
-	frame.location="http://mn.mobcast.jp/mn/#/expedition";
+	frame.location = "http://mn.mobcast.jp/mn/#/expedition";
 	frame.setTimeout(getChakiPoints, 3000);
+};
+
+var politics = [-1, -1, -1];
+
+var findOpponent = function(frame) {
+	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+	frame.location = "http://mn.mobcast.jp/mn/#/war/match?"+Math.random();
+
+	var getOpponent = function() {
+		var series = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.seriesList != "undefined"; });
+		if (!series) {
+			frame.setTimeout(getOpponent, 2000);
+			return;
+		}
+
+		for (var i = 0; i < series.seriesList.length; i++) {
+			var item = series.seriesList[i];
+			if (!item.finished)
+				break;
+		};
+
+		if (!item.finished) {
+			var url = "http://mn.mobcast.jp/mn/#/team_data?userID=" + item.vsPlayerId;
+			var openOpponentInfo = function() {
+				var teamData = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
+				if (!teamData) {
+					frame.location = url;
+					frame.setTimeout(openOpponentInfo, 2000);
+				}
+				else {
+					getOpponentPolitics(frame);
+				}
+			}; frame.setTimeout(openOpponentInfo, 2000);
+		}
+	}; frame.setTimeout(getOpponent, 2000);
+};
+
+var getOpponentPolitics = function(frame) {
+	if (!frame.rootScope)
+		return;
+
+	var teamData = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
+	politics[0] = teamData.abilityEntity.politics1;
+	politics[1] = teamData.abilityEntity.politics2;
+	politics[2] = teamData.abilityEntity.politics3;
+
+	frame.console.log("阵型. Opponent politics: "+politics);
+
+	gotoFormation(frame);
+};
+
+var gotoFormation = function(frame) {
+	var url = "http://mn.mobcast.jp/mn/#/organize/general";
+	frame.location = url;
+
+	var checkFormation = function() {
+		var teamData = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
+		if (!teamData)
+			frame.setTimeout(checkFormation, 2000);
+		else
+			makeFormation(frame);
+	}; frame.setTimeout(checkFormation, 2000);
+};
+
+var makeFormation = function(frame) {
+	var DoSwap = function(src, dst, index) {
+		var src1 = src + 7;
+		var dst1 = dst + 7;
+		frame.setTimeout(function() {
+			frame.console.log("src: "+src1+". dst: "+dst1);
+			teamData.generalTap(src1);
+			teamData.generalTap(src1);
+			teamData.generalTap(dst1);
+			teamData.generalTap(dst1);
+		}, index * 2000);
+	};
+
+	var getOrder = function(data) {
+		// make sure no number is equal to any of the others
+		for (var i = 0; i < data.length; i++) {
+			data[i] = data[i] * data.length + i;
+		}
+
+		var ret = [0, 0, 0];
+		for (var i = 0; i < data.length; i++) {
+			for (var j = 0; j < data.length; j++) {
+				if (i != j)
+					ret[i] += (data[i] - data[j] > 0) ? 1 : 0;
+			}
+		}
+		return ret;
+	};
+
+	var teamData = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
+	var dstData = [];
+	dstData[0] = teamData.abilityEntity.politics1;
+	dstData[1] = teamData.abilityEntity.politics2;
+	dstData[2] = teamData.abilityEntity.politics3;
+
+	var orderSrc = getOrder(politics);
+	var orderDst = getOrder(dstData);
+	frame.console.log("阵型. OrderSrc: " + orderSrc);
+	frame.console.log("阵型. OrderDst: " + orderDst);
+
+	var index = 0;
+	for (var i = 0; i < orderDst.length; i ++)
+	{
+		for (j = 1; j < orderDst.length - i; j ++)
+		{
+			if (orderDst [j-1] > orderDst [j])
+			{
+				var t = orderDst [j-1];
+				orderDst [j-1] = orderDst [j];
+				orderDst [j] = t;
+				DoSwap (j, j-1, index++);
+			}
+		}
+	}
+	var stack = [];
+	for (var i = 0; i < orderSrc.length; i ++)
+	{
+		for (j = 0; j < orderSrc.length - i; j ++)
+		{
+			if (orderSrc [j-1] > orderSrc [j])
+			{
+				var t = orderSrc [j-1];
+				orderSrc [j-1] = orderSrc [j];
+				orderSrc [j] = t;
+				stack [stack.length] = j;
+			}
+		}
+	}
+	for (var i = stack.length-1; i >= 0; i --)
+	{
+		DoSwap (stack[i], stack[i]-1, index++);
+	}
+
+	frame.setTimeout(function() {
+		frame.console.log("阵型. Result: [" + teamData.abilityEntity.politics1 + ", "
+										   + teamData.abilityEntity.politics2 + ", "
+										   + teamData.abilityEntity.politics3 + "]");
+		teamData.tapOkButton();
+	}, index * 2000);
 };
 
 var autoLogin = function(frame, nextLogin)
@@ -347,8 +490,8 @@ var autoLogin = function(frame, nextLogin)
 	frame.document.getElementById("login").submit();
 };
 
-var autoPlay = function(nextLogin) {
-	document.getElementById("playerIndex").value = playerIndex;
+var autoPlay = function(nextLogin, fn) {
+	document.getElementById('playerIndex').value = playerIndex;
 	document.getElementById('userid').innerText = playerIndex;
 	document.getElementById('username').innerText = playerList[playerIndex];
 
@@ -359,7 +502,7 @@ var autoPlay = function(nextLogin) {
 	}, 4000 * timeRatio);
 
 	window.setTimeout(function() {
-		autoExpedition(game.contentWindow);
+		fn(game.contentWindow);
 	}, 15000 * timeRatio);
 
 	if (nextLogin && nextLogin > 0)
@@ -368,7 +511,7 @@ var autoPlay = function(nextLogin) {
 			++playerIndex;
 			if (playerIndex == playerList.length)
 				playerIndex = 0;
-			autoPlay(nextLogin);
+			autoPlay(nextLogin, fn);
 		}, nextLogin);
 	}
 };
@@ -378,7 +521,15 @@ var start = function() {
 	initPlayerList(18, 65);
 	window.console.log(playerList);
 
-	autoPlay(timeDelay * 1000 * timeRatio);
+	autoPlay(timeDelay * 1000 * timeRatio, fn);
+};
+
+var startFormation = function() {
+	initConfig();
+	initPlayerList(18, 65);
+	window.console.log(playerList);
+
+	autoPlay(timeDelay * 1000 * timeRatio, findOpponent);
 };
 
 var nextPlayer = function() {
@@ -413,7 +564,7 @@ var newAccount = function() {
 			autoTutorialBase(game.contentWindow);
 		};
 
-		frame.lastItemIndex = -1;	
+		frame.lastItemIndex = -1;
 
 		var checkEnv = function () {
 			if (!frame.angular) {
@@ -421,29 +572,29 @@ var newAccount = function() {
 				return;
 			}
 
-		frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+			frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
 			if (!frame.rootScope || !frame.rootScope.tutorial) {
 				frame.setTimeout(checkEnv, 2000);
 				return;				
 			}
 
-		frame.tutorial = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
+			frame.tutorial = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
 			if (!frame.tutorial) {
 				frame.setTimeout(checkEnv, 2000);
 				return;				
 			}
 
-		if (frame.rootScope.tutorial.currentPhaseIndex == 0)
-		{
-		    frame.rootScope.tutorial.currentItemIndex=9;
-		    frame.tutorial.click();
-		    frame.setTimeout(frame.autoTutorial, 4000 * timeRatio);
-		}
-		else
-		{
-		    frame.setTimeout(frame.autoTutorial, 200);
-		}
-	};
+			if (frame.rootScope.tutorial.currentPhaseIndex == 0)
+			{
+			    frame.rootScope.tutorial.currentItemIndex=9;
+			    frame.tutorial.click();
+			    frame.setTimeout(frame.autoTutorial, 4000 * timeRatio);
+			}
+			else
+			{
+			    frame.setTimeout(frame.autoTutorial, 200);
+			}
+		};
 		checkEnv();
 	};
 
