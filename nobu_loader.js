@@ -185,15 +185,15 @@ var autoTutorialBase = function(frame)
         {
             states.click_finish();
 
-            window.setTimeout(function() {
+            frame.setTimeout(function() {
                 window.location="http://mn.mobcast.jp/mn/#/invite/invite";
-                window.setTimeout(function() {
-                    $("input[name='codeInput']").value = "2xwy472";
-                    window.setTimeout(function() {
-                        var invite = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.inputInviteCode != "undefined" });
-                        invite.inputInviteCode();
-                    }, 1000);
-                }, 3000);
+                // frame.setTimeout(function() {
+                //     $("input[name='codeInput']").value = "2xwy472";
+                //     frame.setTimeout(function() {
+                //         var invite = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.inputInviteCode != "undefined" });
+                //         invite.inputInviteCode();
+                //     }, 1000);
+                // }, 3000);
             }, 2000);
         }
         else
