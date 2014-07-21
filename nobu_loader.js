@@ -16,8 +16,8 @@ javascript:(
 (function() {
 var autoYahooEmail = function() {
   document.getElementById('yid').value = "xiaotenobu";
-  document.getElementById('pw').value = "tzh20090706";
-  document.getElementById('pw2').value = "tzh20090706";
+  document.getElementById('pw').value = "";
+  document.getElementById('pw2').value = "";
   document.getElementById('postalCode_a').value = "1900155";
   document.getElementById('male').checked = true;
   document.getElementById('birth').value = "19820217";
