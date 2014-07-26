@@ -400,7 +400,7 @@ var findOpponent = function(frame) {
 			var item = series.seriesList[i];
 			if (!item.finished)
 				break;
-		};
+		}
 
 		if (!item.finished) {
 			var day = (item.turn / 5) >> 0;;
@@ -566,6 +566,7 @@ var autoPlay = function(nextLogin, fn) {
 	var game = createGame(loginURL);
 
 	var checkLogin = function() {
+		game = document.getElementById("game");
 		var frame = game.contentWindow;
 		if (!frame || !frame.$ || !frame.$("input[name='email']") || !frame.$("input[name='password']" || !frame.document.getElementById("login"))) {
 			window.console.log("Checking login status...");
@@ -577,6 +578,7 @@ var autoPlay = function(nextLogin, fn) {
 	};	window.setTimeout(checkLogin, 1000 * timeRatio);
 
 	var checkGame = function() {
+		game = document.getElementById("game");
 		var frame = game.contentWindow;
 		if (!frame || !frame.document || !frame.document.getElementsByTagName('body')[0] ||
 			!frame.angular || !frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope()) {
@@ -601,33 +603,33 @@ var autoPlay = function(nextLogin, fn) {
 
 var doStartInterval = function(fn) {
 	initConfig();
-	initPlayerList(18, 80);
+	initPlayerList(18, 100);
 	window.console.log(playerList);
-
-	var doPlay = function() {
-		autoPlay(0, fn);
-	};
 
 	var forceNext = 0;
 	readyForNext = true;
 	playerIndex -= 1;
-	window.setInterval(function() {
-		if (!readyForNext) {
-			return;
-		}
 
-		window.clearTimeout(forceNext);
-		forceNext = window.setTimeout(function() {
-			window.console.log(playerList[playerIndex]+". Again.");
-			doPlay();
-		}, timeDelay * 1000);
-
+	var doPlay = function() {
 		readyForNext = false;
 		++playerIndex;
 		if (playerIndex == playerList.length) {
 			playerIndex = 0;
 		}
-		doPlay();
+
+		window.clearTimeout(forceNext);
+		forceNext = window.setTimeout(function() {
+			window.console.log("Force Next.");
+			doPlay();
+		}, timeDelay * 1000);
+
+		autoPlay(0, fn);
+	};
+
+	window.setInterval(function() {
+		if (readyForNext) {
+			doPlay();
+		}
 	}, 2000);
 };
 
@@ -719,6 +721,13 @@ var doCollectCard = function(frame, type, gacha, index, card)
 
 // Object {generalCardId: 10046, dataStatus: 1, distribution: 1, cardName: "朝比奈泰能"}
 // {generalCardId: 10120, cardName: "柳生宗矩"}
+var isSpecialCard = function(card)
+{
+	return card.bean.generalCardId == 10120
+//			|| card.bean.generalCardId == 10046
+			;
+}
+
 var collectGacha = function(frame, type)
 {
 	var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
@@ -727,7 +736,7 @@ var collectGacha = function(frame, type)
 		var card = gacha.listupData.entity.generalCardList[i];
 		//card.bean.generalCardId
 		frame.console.log("Gacha. CardId: "+card.bean.generalCardId+", Name: "+card.bean.cardName);
-		if ((type == 0 && card.bean.cardRank > 0) || (type == 2 && card.bean.cardRank >= 3)) {
+		if ((type == 0 && (card.bean.cardRank > 0 || isSpecialCard(card))) || (type == 2 && card.bean.cardRank >= 3)) {
 			++count;
 		}
 	};
@@ -742,7 +751,7 @@ var collectGacha = function(frame, type)
 			var card = gacha.listupData.entity.generalCardList[i];
 			//card.bean.generalCardId
 			var curType = type;
-			if (type == 0 && card.bean.cardRank == 1) {
+			if (type == 0 && (card.bean.cardRank == 1 || card.bean.cardRank == 2 || isSpecialCard(card))) {
 				gacha.gotoPageDischarge(i);
 				var checkDiscardData = function() {
 					if (!gacha.dischargeData) {
@@ -752,7 +761,7 @@ var collectGacha = function(frame, type)
 						var discardList = gacha.getDischargeCardList();
 						for (var i = 0; i < discardList.length; i++) {
 							var card2 = discardList[i];
-							if (card2.generalCard.bean.cardRank == 0 && curType == 0) {
+							if (card2.generalCard.bean.cardRank == 0 && !isSpecialCard(card2.generalCard) && curType == 0) {
 								frame.console.log("Replace. "+card.bean.cardName+"=>"+card2.generalCard.bean.cardName);
 								gacha.setSelectDischargeCardIndex(i);
 								gacha.gotoPageResult();
