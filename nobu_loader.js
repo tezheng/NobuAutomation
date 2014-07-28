@@ -382,8 +382,81 @@ var autoExpedition = function(frame)
 	}; frame.setTimeout(checkPlayer, 2000);
 };
 
-var politics = [-1, -1, -1];
+var collectChakiAward = function(frame) {
+	var collectChaki = function() {
+		var chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
 
+		for (var i = 0; i < chaki.teaSets.length; i++) {
+			if (chaki.teaSets[i] > 0 && chaki.friendlyPoints[i] < 500) {
+				var count = 0;
+				if (chaki.teaSets[i] >= 5)
+					count = 5;
+				else if (chaki.teaSets[i] >= 3)
+					count = 3;
+				else if (chaki.teaSets[i] >= 1)
+					count = 1;
+
+				chaki.currentIndex = i;
+				chaki.present(i, count);
+
+				frame.setTimeout(collectChaki, 1000);
+				return;
+			}
+		};
+
+		frame.setTimeout(function() { readyForNext = true; }, 1000);
+	};
+
+	var checkChaki = function() {
+		frame.location = "http://mn.mobcast.jp/mn/#/event/chaki/award";
+		frame.setTimeout(function() {
+			frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+			if (frame.chaki == null) {
+				frame.setTimeout(checkChaki, 1000);
+				return;
+			}
+
+			var validation = 0;
+			var targetPoints = [];
+			for (var i = 0; i < frame.chaki.teaSets.length; i++) {
+				var multiplier = (i == frame.chaki.teaSets.length - 1) ? 5 : 3;
+				targetPoints[i] = frame.chaki.teaSets[i] * multiplier + frame.chaki.friendlyPoints[i];
+				validation += targetPoints[i];
+			};
+
+			if (!validation) {
+				frame.setTimeout(checkChaki, 1000);
+				return;
+			}
+
+			var me = frame.player.myData;
+			frame.console.log("远征. " + me.lordName + ". 茶器数: " + frame.chaki.teaSets);
+			frame.console.log("远征. " + me.lordName + ". 当前友好度: " + frame.chaki.friendlyPoints);
+			frame.console.log("远征. " + me.lordName + ". 目标友好度: " + targetPoints);
+
+			collectChaki();
+		}, 2000);
+	};
+
+	var checkPlayer = function() {
+		frame.player = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.myData != "undefined"; });
+		if (!frame.player) {
+			frame.console.log("Checking player for expedition...");
+			frame.setTimeout(checkPlayer, 2000);
+			return;
+		}
+		else {
+			frame.console.log("远征. " + playerList[playerIndex]);
+			frame.setTimeout(checkChaki, 1000);
+		}
+	};
+
+	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+	if (frame.rootScope)
+		frame.setTimeout(checkPlayer, 2000);
+};
+
+var politics = [-1, -1, -1];
 var findOpponent = function(frame) {
 	frame.console.log("Formation. " + playerList[playerIndex]);
 	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
@@ -568,7 +641,7 @@ var autoPlay = function(nextLogin, fn) {
 	var checkLogin = function() {
 		game = document.getElementById("game");
 		var frame = game.contentWindow;
-		if (!frame || !frame.$ || !frame.$("input[name='email']") || !frame.$("input[name='password']" || !frame.document.getElementById("login"))) {
+		if (!frame || !frame.$ || !frame.$("input[name='email']") || !frame.$("input[name='password']") || !frame.document.getElementById("login")) {
 			window.console.log("Checking login status...");
 			window.setTimeout(checkLogin, 1000);			
 		}
@@ -639,6 +712,10 @@ var start = function() {
 
 var startFormation = function() {
 	doStartInterval(findOpponent);
+};
+
+var startChakiCollection = function() {
+	doStartInterval(collectChakiAward);
 };
 
 var nextPlayer = function() {
