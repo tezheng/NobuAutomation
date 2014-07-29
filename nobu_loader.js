@@ -235,13 +235,72 @@ var autoTutorialBase = function(frame)
     }
 };
 
+var checkChaki = function(frame) {
+	frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+	if (frame.chaki == null) {
+		frame.setTimeout(checkChaki, 1000);
+		return;
+	}
+
+	var validation = 0;
+	var extraChaki = 0;
+
+	frame.targetPoints = [];
+	var targetPoints = frame.targetPoints;
+	for (var i = 0; i < frame.chaki.teaSets.length; i++) {
+		var multiplier = (i == frame.chaki.teaSets.length - 1) ? 5 : 3;
+		var required = Math.min(frame.chaki.teaSets[i], Math.max(Math.ceil(500 - frame.chaki.friendlyPoints[i]), 0));
+		targetPoints[i] = required * multiplier + frame.chaki.friendlyPoints[i];
+		extraChaki += (frame.chaki.teaSets[i] - required);
+		validation += targetPoints[i];
+	};
+
+	targetPoints[targetPoints.length - 1] += extraChaki;
+
+	if (!validation) {
+		frame.setTimeout(checkChaki, 1000);
+		return false;
+	}
+
+	var me = frame.player.myData;
+	frame.console.log("远征. " + me.lordName + ". 茶器数: " + frame.chaki.teaSets);
+	frame.console.log("远征. " + me.lordName + ". 当前友好度: " + frame.chaki.friendlyPoints);
+	frame.console.log("远征. " + me.lordName + ". 目标友好度: " + targetPoints);
+
+	return true;
+};
+
 var autoExpedition = function(frame)
 {
-	var targetPoints = [];
+	var recover = function() {
+		frame.location="http://mn.mobcast.jp/mn/#/shop/recover?"+Math.random();
+		var checkRecover = function() {
+			var recover = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.buyRecover != "undefined"; });
+			if (!recover) {
+				frame.setTimeout(checkRecover, 2000);
+				return;
+			}
+
+			recover.buyRecover("item");
+			frame.setTimeout(locateExpedition, 4000);
+		}
+	};
 
 	var doChallenge = function() {
- 		if (!frame.expedition || frame.expedition.stamina == 0)
+ 		if (!frame.expedition)
+ 		{
  			return {"continue":false, "index":-1};
+ 		}
+
+ 		if (frame.expedition.stamina == 0 && frame.doRecover)
+ 		{
+ 			recover();
+ 			return;
+ 		}
+ 		else
+ 		{
+ 		 	return {"continue":false, "index":-1};	
+ 		}
 
 		for (var index = 0; index <  frame.expedition.matchList.length - 1; ++index)
 		{
@@ -252,7 +311,7 @@ var autoExpedition = function(frame)
 			if (opponent.result > 1)
 			{
 				var threatDegree = (opponent.threatDegree == 1) ? " 强敌":" 普通";
-				if (targetPoints[opponent.eventItemId] > 500) {
+				if (frame.targetPoints[opponent.eventItemId] > 500 && opponent.threatDegree != 1) {
 					continue;
 				}
 				else if (opponent.eventItemId == 3) {
@@ -276,6 +335,7 @@ var autoExpedition = function(frame)
 				return {"continue":true, "index":index};
 			}
 		}
+		frame.console.log("远征. " + me.lordName+". 更新!");
 		frame.expedition.listUpAgain();
 		return {"continue":true, "index":-1};
 	};
@@ -341,7 +401,7 @@ var autoExpedition = function(frame)
 		frame.location = "http://mn.mobcast.jp/mn/#/event/chaki/award";
 		frame.setTimeout(function() {
 			frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
-			if (frame.chaki == null) {
+			if (frame.chaki == null || !checkChaki(frame)) {
 				var movie = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.movieEnd != "undefined"; });
 				if (movie != null)
 					frame.setTimeout(locateExpedition, 1000);
@@ -350,15 +410,6 @@ var autoExpedition = function(frame)
 				return;
 			}
 
-			var me = frame.player.myData;
-			frame.console.log("远征. " + me.lordName + ". 茶器数: " + frame.chaki.teaSets);
-			frame.console.log("远征. " + me.lordName + ". 当前友好度: " + frame.chaki.friendlyPoints);
-
-			for (var i = 0; i < frame.chaki.teaSets.length; i++) {
-				var multiplier = (i == frame.chaki.teaSets.length - 1) ? 5 : 3;
-				targetPoints[i] = frame.chaki.teaSets[i] * multiplier + frame.chaki.friendlyPoints[i];
-			};
-			frame.console.log("远征. " + me.lordName + ". 目标友好度: " + targetPoints);
 			frame.setTimeout(locateExpedition, 2000);
 		}, 3000);
 	};
@@ -407,32 +458,14 @@ var collectChakiAward = function(frame) {
 		frame.setTimeout(function() { readyForNext = true; }, 1000);
 	};
 
-	var checkChaki = function() {
+	var tryCheckChaki = function() {
 		frame.location = "http://mn.mobcast.jp/mn/#/event/chaki/award";
 		frame.setTimeout(function() {
 			frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
-			if (frame.chaki == null) {
-				frame.setTimeout(checkChaki, 1000);
+			if (frame.chaki == null || !checkChaki(frame)) {
+				frame.setTimeout(tryCheckChaki, 1000);
 				return;
 			}
-
-			var validation = 0;
-			var targetPoints = [];
-			for (var i = 0; i < frame.chaki.teaSets.length; i++) {
-				var multiplier = (i == frame.chaki.teaSets.length - 1) ? 5 : 3;
-				targetPoints[i] = frame.chaki.teaSets[i] * multiplier + frame.chaki.friendlyPoints[i];
-				validation += targetPoints[i];
-			};
-
-			if (!validation) {
-				frame.setTimeout(checkChaki, 1000);
-				return;
-			}
-
-			var me = frame.player.myData;
-			frame.console.log("远征. " + me.lordName + ". 茶器数: " + frame.chaki.teaSets);
-			frame.console.log("远征. " + me.lordName + ". 当前友好度: " + frame.chaki.friendlyPoints);
-			frame.console.log("远征. " + me.lordName + ". 目标友好度: " + targetPoints);
 
 			collectChaki();
 		}, 2000);
@@ -447,7 +480,7 @@ var collectChakiAward = function(frame) {
 		}
 		else {
 			frame.console.log("远征. " + playerList[playerIndex]);
-			frame.setTimeout(checkChaki, 1000);
+			frame.setTimeout(tryCheckChaki, 1000);
 		}
 	};
 
@@ -455,6 +488,147 @@ var collectChakiAward = function(frame) {
 	if (frame.rootScope)
 		frame.setTimeout(checkPlayer, 2000);
 };
+
+var getSeriesData = function(frame, log) {
+	var resource = 0;
+	var results = [0, 0, 0];
+	var getData = function() {
+		var series = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.seriesList != "undefined"; });
+		if (!series) {
+			frame.setTimeout(getData, 2000);
+			return;
+		}
+
+		if (series.seriesList.length == 0 && series.day > 0) {
+			var days = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.previousDay != "undefined"; });
+			days.previousDay();
+			days.$apply();
+			frame.setTimeout(getData, 2000);
+			return;
+		}
+
+		for (var i = 0; i < series.seriesList.length; i++) {
+			var item = series.seriesList[i];
+			if (!item.finished)
+				continue;
+
+			resource += item.ownerResourcesSwing;
+			results[item.round1stResult] += 1;
+			results[item.round2ndResult] += 1;
+			results[item.round3rdResult] += 1;
+		}
+
+		log += ", 胜, " + results[0] + ", 平, " + results[2] + ", 负, " + results[1];
+		log += ", 石, " + resource;
+
+		getPoliticsData(frame, log);
+	}
+	frame.location = "http://mn.mobcast.jp/mn/#/war/match?"+Math.random();
+	frame.setTimeout(getData, 2000);
+};
+
+var getPoliticsData = function(frame, log) {
+	var url = "http://mn.mobcast.jp/mn/#/organize/general";
+	frame.location = url;
+
+	var checkPolitics = function() {
+		var teamData = findChildScope(frame.rootScope, function(childscope) {
+			return typeof childscope.tapOkButton != "undefined" &&
+				   typeof childscope.generalTap != "undefined" &&
+				   typeof childscope.abilityEntity != "undefined";
+		});
+
+		if (!teamData) {
+			frame.setTimeout(checkPolitics, 2000);
+			return;
+		}
+
+		log += ", 内政:" + teamData.abilityEntity.politics1 + "|"
+		 				 + teamData.abilityEntity.politics2 + "|"
+		 				 + teamData.abilityEntity.politics3;
+
+		// playerGeneralCard.leaderBonusParam.{leadership: 0, offense: 0, defense: 0, wisdom: 12, politics: 0}
+		// playerGeneralSeasonRecord.bean Object drawn: 2games: 24guideDrawn: 0guideGames: 0guideLost: 0guideWon: 0id: Objectleague: 173005lost: 1 rankingAttackDamage: 11rankingKnockDown: 29rankingSoldier: -1totalAttack: 69totalAttackCritical: 18totalAttackDamage: 232980totalAttackTip: 6totalDead: 1totalDefense: 39totalDefenseCritical: 9totalDefenseDamage: 59007totalDefenseTip: 0totalKnockDown: 15totalSkill: 17totalSoldier: 0won: 21world: 17
+		var politicsStr = "";
+		for (var i = 7; i < 10; ++i)
+		{
+			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]]
+			var curSeason = card.playerGeneralCard.bean.season + 1;
+			var seasonData = card.generalCard.bean.peaks.split(',');
+			if (!seasonData[curSeason] || seasonData[curSeason] == "2")
+			{
+				politicsStr += card.generalCard.bean.cardName + ":"+curSeason+"期. ";
+			}
+		}
+
+		log += ", " + politicsStr;
+
+		getFormationData(frame, log);
+	}; frame.setTimeout(checkPolitics, 2000);
+};
+
+var getFormationData = function(frame, log)
+{
+	var checkFormation = function() {
+		var formation = findChildScope(frame.rootScope, function(childscope) {
+			return typeof childscope.walletData != "undefined" &&
+				   typeof childscope.getTopPageDisplayFormationItems != "undefined";
+		});
+
+		if (!formation || !formation.walletData ||
+			!(formation.walletData.gameGold + formation.walletData.portalGold + formation.walletData.bonusPoint))
+		{
+			frame.setTimeout(checkFormation, 2000);
+			return;
+		}
+
+		var totalGold = formation.walletData.gameGold + formation.walletData.portalGold;
+		log += ", Money, " + totalGold;
+
+		var formationList = formation.getTopPageDisplayFormationItems();
+		var formationStr = "";
+		for (var i = 0; i < formationList.length; i++) {
+			var fo = formationList[i];
+			var fcard = fo.formationCard;
+			if (fo.soldOut || fo.pricePoint < 0)
+				continue;
+			formationStr += " 阵型:"+fcard.bean.formationName
+							+".统" + fcard.bean.bonusLeadership * 7
+							+".攻" + fcard.bean.bonusOffense * 7
+							+".防" + fcard.bean.bonusDefense * 7
+							+".知" + fcard.bean.bonusWisdom * 7;
+		};
+		log += ", Formation, " + formationStr;
+
+		// logout
+		frame.console.log(log);
+		frame.setTimeout(function() { readyForNext = true; }, 1000);
+	}
+
+	frame.location = "http://mn.mobcast.jp/mn/#/shop/formation";
+	frame.setTimeout(checkFormation, 2000);
+};
+
+var logOutInfo = function(frame) {
+	// todo: expired politics, detail damage
+	var log = "Info. " + playerList[playerIndex];
+
+	var checkPlayer = function() {
+		frame.player = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.myData != "undefined"; });
+		if (!frame.player || !frame.player.myData || !frame.player.myData.presentBoxCount) {
+			frame.setTimeout(checkPlayer, 2000);
+			return;
+		}
+		else {
+			log += ", " + frame.player.myData.division + frame.player.myData.leagueName;
+			log += ", 奖励, " + frame.player.myData.presentBoxCount;
+			getSeriesData(frame, log);
+		}
+	};
+
+	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+	frame.setTimeout(checkPlayer, 2000);
+}
 
 var politics = [-1, -1, -1];
 var findOpponent = function(frame) {
@@ -659,6 +833,9 @@ var autoPlay = function(nextLogin, fn) {
 			window.setTimeout(checkGame, 2000);
 		}
 		else {
+			var elem = document.getElementById('autoRecover');
+			if (elem)
+				game.contentWindow.doRecover = elem.value;
 			fn(game.contentWindow);
 		}
 	}; window.setTimeout(checkGame, 3000 * timeRatio);
@@ -676,7 +853,7 @@ var autoPlay = function(nextLogin, fn) {
 
 var doStartInterval = function(fn) {
 	initConfig();
-	initPlayerList(18, 100);
+	initPlayerList(18, 105);
 	window.console.log(playerList);
 
 	var forceNext = 0;
@@ -716,6 +893,10 @@ var startFormation = function() {
 
 var startChakiCollection = function() {
 	doStartInterval(collectChakiAward);
+};
+
+var startInfo = function() {
+	doStartInterval(logOutInfo);
 };
 
 var nextPlayer = function() {
