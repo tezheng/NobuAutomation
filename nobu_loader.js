@@ -255,17 +255,42 @@ var checkChaki = function(frame) {
 		validation += targetPoints[i];
 	};
 
-	targetPoints[targetPoints.length - 1] += extraChaki;
-
 	if (!validation) {
 		frame.setTimeout(checkChaki, 1000);
 		return false;
 	}
 
+	targetPoints[targetPoints.length - 1] += extraChaki;
 	var me = frame.player.myData;
 	frame.console.log("远征. " + me.lordName + ". 茶器数: " + frame.chaki.teaSets);
 	frame.console.log("远征. " + me.lordName + ". 当前友好度: " + frame.chaki.friendlyPoints);
-	frame.console.log("远征. " + me.lordName + ". 目标友好度: " + targetPoints);
+	frame.console.log("远征. " + me.lordName + ". " + playerList[playerIndex] + ". 目标友好度: " + targetPoints);
+
+	frame.doRecover = false;
+	var threshold = 500;
+	if (targetPoints[0] > 500
+		&& targetPoints[1] > 500
+		&& targetPoints[2] > 500
+		&& targetPoints[targetPoints.length - 1] < threshold)
+	{
+		var diff = 0;
+		if (targetPoints[targetPoints.length - 1] - 200 < 0) {
+			diff = 200 - targetPoints[targetPoints.length - 1]
+		}
+		else if (targetPoints[targetPoints.length - 1] - 300 < 0) {
+			diff = 300 - targetPoints[targetPoints.length - 1];
+		}
+		else if (targetPoints[targetPoints.length - 1] - 400 < 0) {
+			diff = 400 - targetPoints[targetPoints.length - 1];
+		}
+		else if (targetPoints[targetPoints.length - 1] - threshold < 0) {
+			diff = threshold - targetPoints[targetPoints.length - 1];
+		}
+
+		frame.doRecover = true;
+		frame.recoverNeeded = ((diff / 7) >> 0) + 1;
+		frame.console.log("远征. " + me.lordName + ". 需要远征饭: " + frame.recoverNeeded);
+	}
 
 	return true;
 };
@@ -281,9 +306,15 @@ var autoExpedition = function(frame)
 				return;
 			}
 
-			recover.buyRecover("item");
-			frame.setTimeout(locateExpedition, 4000);
-		}
+			frame.console.log("远征. " + frame.player.myData.lordName + ". 当前远征饭: " + recover.recoverItem);
+			if (recover.recoverItem >= frame.recoverNeeded - 1) {
+				recover.buyRecover("item");
+				frame.setTimeout(getChakiPoints, 4000);				
+			}
+			else {
+				frame.setTimeout(function() { readyForNext = true; }, 1000);
+			}
+		}; frame.setTimeout(checkRecover, 2000);
 	};
 
 	var doChallenge = function() {
@@ -292,13 +323,13 @@ var autoExpedition = function(frame)
  			return {"continue":false, "index":-1};
  		}
 
- 		if (frame.expedition.stamina == 0 && frame.doRecover)
+ 		if (frame.expedition.stamina == 0)
  		{
- 			recover();
- 			return;
- 		}
- 		else
- 		{
+ 			if (frame.doRecover)
+ 			{
+ 				recover();
+ 				return;
+ 			}
  		 	return {"continue":false, "index":-1};	
  		}
 
@@ -386,6 +417,9 @@ var autoExpedition = function(frame)
 				}, 7000);
 				frame.setTimeout(locateExpedition, 9000);
 			}
+			else {
+				frame.setTimeout(doLocateExpedition, 2000);
+			}
 	    }
 	    else {
 	    	startChallenge();
@@ -440,6 +474,8 @@ var collectChakiAward = function(frame) {
 		for (var i = 0; i < chaki.teaSets.length; i++) {
 			if (chaki.teaSets[i] > 0 && chaki.friendlyPoints[i] < 500) {
 				var count = 0;
+				var multiplier = (i == chaki.teaSets.length - 1) ? 5 : 3;
+
 				if (chaki.teaSets[i] >= 5)
 					count = 5;
 				else if (chaki.teaSets[i] >= 3)
@@ -447,22 +483,49 @@ var collectChakiAward = function(frame) {
 				else if (chaki.teaSets[i] >= 1)
 					count = 1;
 
+				while (count > 1 && (chaki.friendlyPoints[i] + count * multiplier > 500 + multiplier)) {
+					count -= 2;
+				}
+
 				chaki.currentIndex = i;
 				chaki.present(i, count);
 
-				frame.setTimeout(collectChaki, 1000);
+				frame.setTimeout(tryCheckChaki, 1000);
 				return;
 			}
 		};
 
-		frame.setTimeout(function() { readyForNext = true; }, 1000);
+		if (chaki.friendlyPoints[0] > 500 && chaki.friendlyPoints[1] > 500 && chaki.friendlyPoints[2] > 500)
+		{
+			if (chaki.friendlyPoints[3] < 500)
+			{
+				for (var i = 0; i < chaki.teaSets.length; i++) {
+					if (chaki.teaSets[i] > 0) {
+						var count = 0;
+						if (chaki.teaSets[i] >= 5)
+							count = 5;
+						else if (chaki.teaSets[i] >= 3)
+							count = 3;
+						else if (chaki.teaSets[i] >= 1)
+							count = 1;
+
+						chaki.currentIndex = 3;
+						chaki.present(i, count);
+
+						frame.setTimeout(tryCheckChaki, 1000);
+						return;
+					}
+				}
+			}
+		}
+		frame.setTimeout(function() { readyForNext = true; }, 4000);
 	};
 
 	var tryCheckChaki = function() {
 		frame.location = "http://mn.mobcast.jp/mn/#/event/chaki/award";
 		frame.setTimeout(function() {
-			frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
-			if (frame.chaki == null || !checkChaki(frame)) {
+			var chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+			if (chaki == null || !checkChaki(frame)) {
 				frame.setTimeout(tryCheckChaki, 1000);
 				return;
 			}
@@ -527,6 +590,7 @@ var getSeriesData = function(frame, log) {
 	frame.setTimeout(getData, 2000);
 };
 
+var leaderBonusRecord = {};
 var getPoliticsData = function(frame, log) {
 	var url = "http://mn.mobcast.jp/mn/#/organize/general";
 	frame.location = url;
@@ -559,9 +623,37 @@ var getPoliticsData = function(frame, log) {
 			{
 				politicsStr += card.generalCard.bean.cardName + ":"+curSeason+"期. ";
 			}
-		}
+		}; log += ", " + politicsStr;
 
-		log += ", " + politicsStr;
+		for (var i = 0; i < teamData.positionArray.list.length; i++) {
+			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
+			if (leaderBonusRecord[teamData.positionArray.list[i]])
+				continue;
+
+			var leaderBonus = "大将. " + card.generalCard.bean.cardName + ". "
+									   + teamData.positionArray.list[i] + ". "
+									   + "统." + card.playerGeneralCard.leaderBonusParam.leadership + ". "
+									   + "攻." + card.playerGeneralCard.leaderBonusParam.offense + ". "
+									   + "防." + card.playerGeneralCard.leaderBonusParam.defense + ". "
+									   + "知." + card.playerGeneralCard.leaderBonusParam.wisdom + ". ";
+			frame.console.log(leaderBonus);
+			leaderBonusRecord[teamData.positionArray.list[i]] = leaderBonus;
+		};
+
+		for (var i = 0; i < teamData.positionArray.list.length; i++) {
+			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
+			if (card.playerGeneralSeasonRecord && card.playerGeneralSeasonRecord.bean.totalAttackDamage)
+			{
+				var bean = card.playerGeneralSeasonRecord.bean;
+				var record = "合战. " + card.generalCard.bean.cardName + ". " + teamData.positionArray.list[i]
+									  + ". 击败." + bean.totalSkill + ". 溃退." + bean.totalDead
+									  + ". 攻击." + bean.totalAttack + ". 暴击." + bean.totalAttackCritical
+									  + ". 总伤害." + bean.totalAttackDamage + ". 单次伤害." + ((bean.totalAttackDamage / bean.totalAttack) >> 0)
+									  + ". 总损失." + bean.totalDefenseDamage + ". 总防御." + bean.totalDefense + ". 单次防御." + ((bean.totalDefenseDamage / bean.totalDefense) >> 0)
+									  ;
+				frame.console.log(record);
+			}
+		};
 
 		getFormationData(frame, log);
 	}; frame.setTimeout(checkPolitics, 2000);
@@ -610,7 +702,7 @@ var getFormationData = function(frame, log)
 };
 
 var logOutInfo = function(frame) {
-	// todo: expired politics, detail damage
+	// todo: expired politics and potential replacement, expired generals
 	var log = "Info. " + playerList[playerIndex];
 
 	var checkPlayer = function() {
@@ -650,7 +742,7 @@ var findOpponent = function(frame) {
 		}
 
 		if (!item.finished) {
-			var day = (item.turn / 5) >> 0;;
+			var day = (item.turn / 5) >> 0;
 			var turn = item.turn % 5;
 			day += 1;
 			turn += 1;
@@ -853,7 +945,7 @@ var autoPlay = function(nextLogin, fn) {
 
 var doStartInterval = function(fn) {
 	initConfig();
-	initPlayerList(18, 105);
+	initPlayerList(18, 110);
 	window.console.log(playerList);
 
 	var forceNext = 0;
@@ -903,7 +995,7 @@ var nextPlayer = function() {
 	if (!playerList)
 	{
 		initConfig();
-		initPlayerList(18, 65);
+		initPlayerList(18, 110);
 		window.console.log(playerList);
 	}
 
