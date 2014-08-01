@@ -9,8 +9,11 @@
 		<span>Time ratio: </span><span><input id = "timeRatio" value="1" style="width:40px"></span>
 	</div>
 	<div>
-		<span>First player: </span><span><input id = "playerIndex" value="0" style="width:40px"></span>
-		<span>Last player: </span><span><input id = "playerIndex" value="0" style="width:40px"></span>
+		<span>First player: </span><span><input id = "startPlayer" value="0" style="width:40px"></span>
+		<span>Last player: </span><span><input id = "endPlayer" value="0" style="width:40px"></span>
+	</div>
+	<div>
+		<span>Current player: </span><span><input id = "playerIndex" value="0" style="width:40px"></span>
 	</div>
 	<h3>Play</h3>
 	<div>
@@ -19,6 +22,7 @@
 	<div>
 		<span><button type = "button" onclick = "javascript:(start())">Start</button></span>
 		<span><button type = "button" onclick = "javascript:(startFormation())">Formation</button></span>
+		<span><button type = "button" onclick = "javascript:(login())">Login</button></span>
 		<span><button type = "button" onclick = "javascript:(nextPlayer())">Next Player</button></span>
 		<span><button type = "button" onclick = "javascript:(startChakiCollection())">Chaki</button></span>
 		<span><button type = "button" onclick = "javascript:(startInfo())">Info</button></span>
@@ -37,6 +41,8 @@
 	<div>
 		<span>User ID: </span>
 		<span id = "userid"></span>
+	</div>
+	<div id = "game_placeholder">
 	</div>
 	<div>
 		<span>User Name: </span>

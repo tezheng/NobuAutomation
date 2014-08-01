@@ -41,6 +41,8 @@ var startPlayer = 0;
 var endPlayer = 0;
 var playerList = [];
 var password = "";
+var playerCount = 18;
+var playerCountYahoo = 115;
 
 var updateConfig = function(cfgCB) {
 	timeDelay = document.getElementById("timeDelay").value;	
@@ -52,24 +54,24 @@ var updateConfig = function(cfgCB) {
 	var elem = document.getElementById("startPlayer");
 	startPlayer = (elem) ? elem.value : playerIndex;
 	elem = document.getElementById("endPlayer");
-	endPlayer = (elem) ? elem.value : -1;
+	endPlayer = (elem && elem.value > 0) ? elem.value : -1;
 
 	if (cfgCB)
 		cfgCB();
 }
 
-var initPlayerList = function(playerCount, playerCountYahoo) {
+var initPlayerList = function() {
 	playerList = [
 					"tezheng1982@gmail.com", "tezhengchenhao@gmail.com"
 					, "dummyedu@gmail.com", "dummyedu01@gmail.com", "dummyedu02@gmail.com", "dummyedu03@gmail.com", "dummedu04@gmail.com"
 	];
-	for (var i = 1; i <=playerCount; ++i) {
+	for (var i = 1; i <= playerCount; ++i) {
 		if (i < 10)
 			playerList.push("xiaotenobu0"+i+"@gmail.com");
 		else
 			playerList.push("xiaotenobu"+i+"@gmail.com");			
 	};
-	for (var i = 1; i <=playerCountYahoo; ++i) {
+	for (var i = 1; i <= playerCountYahoo; ++i) {
 		if (i < 10)
 			playerList.push("xiaotenobu0"+i+"@yahoo.co.jp");
 		else
@@ -89,7 +91,7 @@ var createGame = function(url) {
 	frame.frameborder = '0';
 	frame.scrolling = 'no';
 	frame.src = url;
-	document.body.appendChild(frame);	
+	document.getElementById("game_placeholder").appendChild(frame);
 
 	var result = document.getElementById("game");
 	return result;
@@ -994,7 +996,7 @@ var startInterval = 0;
 var doStartInterval = function(fn, cb) {
 	if (!playerList || playerList.length == 0)
 	{
-		initPlayerList(18, 110);
+		initPlayerList();
 		window.console.log(playerList);		
 	}
 
@@ -1044,36 +1046,20 @@ var startInfo = function() {
 };
 
 var login = function () {
+	if (!playerList || playerList.length == 0)
+	{
+		initPlayerList();
+		window.console.log(playerList);		
+	}
+	updateConfig();
+
 	autoPlay();
 }
 
 var nextPlayer = function() {
 	var elem = document.getElementById("playerIndex");
-	elem.value += 1;
+	elem.value = (elem.value|0) + 1;
 	login();
-};
-
-var nextPlayer_old = function() {
-	if (!playerList || playerList.length == 0)
-	{
-		initConfig();
-		initPlayerList(18, 110);
-		window.console.log(playerList);
-	}
-
-	++playerIndex;
-	if (playerIndex == playerList.length)
-		playerIndex = 0;
-
-	document.getElementById("playerIndex").value = playerIndex;
-	document.getElementById('userid').innerText = playerIndex;
-	document.getElementById('username').innerText = playerList[playerIndex];
-
-	var game = createGame(loginURL);
-
-	window.setTimeout(function() {
-		autoLogin(game.contentWindow);
-	}, 4000 * timeRatio);
 };
 
 var nextGachaType = -1;
@@ -1111,6 +1097,18 @@ var isSpecialCard = function(card)
 	return card.bean.generalCardId == 10120
 //			|| card.bean.generalCardId == 10046
 			;
+}
+
+var isCrappyCard = function(card)
+{
+	return card.bean.generalCardId == 10247 // Name: 遠藤直経2
+		|| card.bean.generalCardId == 10056 // Name: 富田景政2
+		|| card.bean.generalCardId == 10145 // Name: 南部晴政2
+		|| card.bean.generalCardId == 10103 // Name: 直江景綱2
+		|| card.bean.generalCardId == 10262 // Name: 十河存保 
+		// || card.bean.generalCardId == 10145 // Name: 南部晴政2		
+//			|| car
+	;
 }
 
 var collectGacha = function(frame, config)
@@ -1169,6 +1167,7 @@ var collectGacha = function(frame, config)
 
 var prepareGacha = function(frame, config) {
 	frame.location = "http://mn.mobcast.jp/mn/#/gacha/top?"+Math.random();
+	getRootScope(frame);
 	var checkGacha = function() {
 		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 		if (!gacha || !gacha.walletData) {
@@ -1193,6 +1192,41 @@ var startGacha = function(config, frame)
 };
 
 var newAccount = function() {
+	var state = 0;
+	var lastLocation = "";
+	var timeRatio = document.getElementById("timeRatio").value;
+	var newUserURL = document.getElementById("newUserURL").value;
+	var count = document.getElementById("count").value;
+	var game = createGame(newUserURL);
+
+	var isInGame = function(frame)
+	{
+		if (!frame || !frame.angular || !frame.angular.element)
+			return false;
+
+		var rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+		if (!rootScope || !rootScope.$$childHead)
+			return false;
+
+		return true;
+	}
+
+	var isInTutorial = function(frame)
+	{
+		if (!frame || !frame.angular || !frame.angular.element)
+			return false;
+
+		var rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+		if (!rootScope || !rootScope.$$childHead || !rootScope.tutorial)
+			return false;
+
+		var tutorial = findChildScope(rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
+		if (!tutorial)
+			return false;
+
+		return true;
+	}
+
 	var autoRun = function() {
 		var frame = game.contentWindow;
 
@@ -1204,23 +1238,13 @@ var newAccount = function() {
 		frame.lastItemIndex = -1;
 
 		var checkEnv = function () {
-			if (!frame.angular) {
+			if (!isInGame(frame)) {
 				frame.setTimeout(checkEnv, 2000);
-				return;
+				return;				
 			}
 
 			frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-			if (!frame.rootScope || !frame.rootScope.tutorial) {
-				frame.setTimeout(checkEnv, 2000);
-				return;				
-			}
-
 			frame.tutorial = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
-			if (!frame.tutorial) {
-				frame.setTimeout(checkEnv, 2000);
-				return;				
-			}
-
 			if (frame.rootScope.tutorial.currentPhaseIndex == 0)
 			{
 			    frame.rootScope.tutorial.currentItemIndex=9;
@@ -1236,25 +1260,74 @@ var newAccount = function() {
 	};
 
 	var openGame = function() {
+		state = -1;
 		var frame = game.contentWindow;
 		frame.location = "http://mn.mobcast.jp/mn/#/";
+
+		autoRun();
 	};
 
 	var regist = function() {
-		var frame = game.contentWindow;
+		var checkStatus = function() {
+			var frame = game.contentWindow;
+			if (!frame || !frame.$ || frame.$("form[name=frmMain]").length == 0 || frame.location.href == lastLocation)
+				return false;
+			else
+				return true;
+		}
+
+		if (!checkStatus()) {
+			window.console.log("Checking regist...");
+			window.setTimeout(regist, 2000);
+			return;
+		}
+
+		var frame = game.contentWindow; lastLocation = frame.location.href;
 		var button = frame.$("form[name='frmMain']");
 		button.submit();
+
+		state = 3;
 	};
 
 	var createUser = function() {
-		var frame = game.contentWindow;
+		var checkStatus = function() {
+			var frame = game.contentWindow;
+			if (!frame || !frame.$ || frame.$("input[name='NAME']").length == 0 || frame.$("form[name=frmMain]").length == 0)
+				return false;
+			else
+				return true;
+		}
+
+		if (!checkStatus()) {
+			window.console.log("Checking createUser...");
+			window.setTimeout(createUser, 2000);
+			return;
+		}
+
+		var frame = game.contentWindow; lastLocation = frame.location.href;
 		var input = frame.$("input[name='NAME']");
 		input.val("モブ"+generatePasswords()+"ブ");
 		frame.$("form[name=frmMain]").submit();
+
+		state = 2;
 	};
 
 	var visit = function() {
-		var frame = game.contentWindow;
+		var checkStatus = function() {
+			var frame = game.contentWindow;
+			if (!frame || !frame.$ || !frame.$("[name='INSTALL']"))
+				return false;
+			else
+				return true;
+		}
+
+		if (!checkStatus()) {
+			window.console.log("Checking visit...");
+			window.setTimeout(visit, 2000);
+			return;
+		}
+
+		var frame = game.contentWindow; lastLocation = frame.location.href;
 		var button = frame.$("[name='INSTALL']");
 
 		var url = button.attr('onclick');
@@ -1263,20 +1336,51 @@ var newAccount = function() {
 
 		button.attr('onclick', url);
 		button.click();
+
+		state = 1;
 	};
 
-	var timeRatio = document.getElementById("timeRatio").value;
-	var newUserURL = document.getElementById("newUserURL").value;
-	var count = document.getElementById("count").value;
+	var runner = function() {
+		var frame = game.contentWindow;
+		if (isInTutorial(frame)) {
+			autoRun(frame);
+			return;
+		}
 
-	for (var i = 0; i < count; i++) {
-		window.setTimeout(function() {
-			var game = createGame(newUserURL);
-			window.setTimeout(visit, 2000 * timeRatio);
-			window.setTimeout(createUser, 4000 * timeRatio);
-			window.setTimeout(regist, 6000 * timeRatio);
-			window.setTimeout(openGame, 8000 * timeRatio);
-			window.setTimeout(autoRun, 18000 * timeRatio);
-		}, i * 60000 * timeRatio);
+		window.console.log("runner.state: " + state);
+		if (state == -1) {
+			return;
+		}
+		else if (state == 0) {
+			window.setTimeout(runner, 1000);
+			return;
+		}
+
+		switch (state) {
+			case 1:
+				createUser();
+				break;
+			case 2:
+				regist();
+				break;
+			case 3:
+				return openGame();
+			default:
+				break;
+		}
+
+		state = 0;
+		window.setTimeout(runner, 1000);
 	};
+
+	visit();
+	runner();
+
+	// window.setTimeout(function() {
+	// 	window.setTimeout(visit, 2000 * timeRatio);
+	// 	window.setTimeout(createUser, 4000 * timeRatio);
+	// 	window.setTimeout(regist, 6000 * timeRatio);
+	// 	window.setTimeout(openGame, 8000 * timeRatio);
+	// 	window.setTimeout(autoRun, 18000 * timeRatio);
+	// }, 0);
 };
