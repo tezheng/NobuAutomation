@@ -6,10 +6,10 @@
 	<h3>Config</h3>
 	<div>
 		<span>Time ratio: </span><span><input id = "timeRatio" value="1" style="width:40px"></span>
+		<span>Count: </span><span><input id = "count" value="1" style="width:40px"></span>
 	</div>
 	<div>
-		<span>Count: </span><span><input id = "count" value="1" style="width:40px"></span>
-		<span>URL: </span><span><input id = "newUserURL" value="" style="width:400px"></span>
+		<span>URL: </span><span><input id = "newUserURL" value="" style="width:300px"></span>
 	</div>
 	<div>
 	<span>Leader: 
@@ -27,6 +27,17 @@
 	</select>
 	</span>
 		<span><button type = "button" onclick = "javascript:(newAccount())">Start</button></span>
+	</div>
+	<h3>Functions</h3>
+	<div>
+		----GN:GachaNormal; GM: GachaMoney----
+	</div>
+	<div>
+		<span>------</span>
+		<span><button type = "button" onclick = "javascript:(acquirePresents(getFrame()))">Present</button></span>		
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':10,'autoCollect':true}))">GN10</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':2,'count':10,'autoCollect':true}))">GM10</button></span>
+		<span>------</span>
 	</div>
 	<h3>Game</h3>
 </body>

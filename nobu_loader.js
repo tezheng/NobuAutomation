@@ -33,20 +33,32 @@ var loginURL = "http://user.mobcast.jp/login?guid=ON&return_to=http%3A%2F%2Fmn.m
 var newUserURL = "http://gmpa.jp/regist.php?gmpa=on&input=1&back_url=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&gid=23&sid=0";
 
 var readyForNext = false;
+
 var timeRatio = 1;
-var timeDelay = 30;
-var initConfig = function() {
+var timeDelay = 50;
+var playerIndex = 0;
+var startPlayer = 0;
+var endPlayer = 0;
+var playerList = [];
+var password = "";
+
+var updateConfig = function(cfgCB) {
 	timeDelay = document.getElementById("timeDelay").value;	
 	timeRatio = document.getElementById("timeRatio").value;	
-}
 
-var playerIndex = 2;
-var playerCount = 17;
-var playerList = null;
-var password = null;
-var initPlayerList = function(playerCount, playerCountYahoo) {
 	playerIndex = document.getElementById("playerIndex").value;
 	password = document.getElementById("password").value;
+
+	var elem = document.getElementById("startPlayer");
+	startPlayer = (elem) ? elem.value : playerIndex;
+	elem = document.getElementById("endPlayer");
+	endPlayer = (elem) ? elem.value : -1;
+
+	if (cfgCB)
+		cfgCB();
+}
+
+var initPlayerList = function(playerCount, playerCountYahoo) {
 	playerList = [
 					"tezheng1982@gmail.com", "tezhengchenhao@gmail.com"
 					, "dummyedu@gmail.com", "dummyedu01@gmail.com", "dummyedu02@gmail.com", "dummyedu03@gmail.com", "dummedu04@gmail.com"
@@ -72,16 +84,36 @@ var createGame = function(url) {
 
 	frame = document.createElement('iframe');
 	frame.id = "game";
-	frame.width = 350;
-	frame.height = 450;
+	frame.width = 320;
+	frame.height = 440;
 	frame.frameborder = '0';
 	frame.scrolling = 'no';
-	frame.src = url
+	frame.src = url;
 	document.body.appendChild(frame);	
 
 	var result = document.getElementById("game");
 	return result;
 };
+
+var getFrame = function() {
+	var frame = null;
+	if (typeof game != "undefined" && typeof game.contentWindow != "undefined")
+		frame = game.contentWindow;
+	else
+		frame = window;
+	return frame;
+}
+
+var getRootScope = function(frame, forceUpdate) {
+	var local = frame ? frame : getFrame();
+	if (!local || !local.angular || !local.angular.element || !frame.document.getElementsByTagName('body')[0])
+		return null;
+
+	if (!frame.rootScope || forceUpdate)
+		frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+
+	return frame.rootScope;
+}
 
 var findChildScope = function(scope, condition) {
   var childscope = scope.$$childHead;
@@ -143,12 +175,8 @@ var generatePasswords = function () {
 };
 
 var acquirePresents = function(frame) {
-	if (!frame.rootScope) {
-		frame.console.log("acquirePresents. Can not find rootScope!");
-		return;
-	}
-
-	var overlay = findChildScope(frame.rootScope, function(childscope) {
+	var rootScope = getRootScope(frame);
+	var overlay = findChildScope(rootScope, function(childscope) {
 		return typeof childscope.showPresentBox != "undefined" &&
 			   typeof childscope.showGlobalMenu != "undefined"; });
 
@@ -157,7 +185,7 @@ var acquirePresents = function(frame) {
 
 	var getAll = function() {
 		var checkPresents = function () {
-			var present = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.acquireAllPresents != "undefined"; });
+			var present = findChildScope(rootScope, function(childscope) { return typeof childscope.acquireAllPresents != "undefined"; });
 			if (!present)
 				frame.setTimeout(checkPresents, 2000);
 			else
@@ -342,13 +370,14 @@ var autoExpedition = function(frame)
 			if (opponent.result > 1)
 			{
 				var threatDegree = (opponent.threatDegree == 1) ? " 强敌":" 普通";
-				if (frame.targetPoints[opponent.eventItemId] > 500 && opponent.threatDegree != 1) {
-					continue;
-				}
-				else if (opponent.eventItemId == 3) {
-					frame.console.log("远征. " + me.lordName+". 名茶!: "+me.rank+" vs "+opponent.vsPlayerName+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
-				}
-				else if ((opponent.vsRank > 10 && (opponent.vsRank > me.rank + 1))
+				// if (frame.targetPoints[opponent.eventItemId] > 500 && opponent.threatDegree != 1) {
+				// 	continue;
+				// }
+				// else if (opponent.eventItemId == 3) {
+				// 	frame.console.log("远征. " + me.lordName+". 名茶!: "+me.rank+" vs "+opponent.vsPlayerName+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
+				// }
+				// else
+				if ((opponent.vsRank > 10 && (opponent.vsRank > me.rank + 1))
 						 ||(opponent.vsRank > 15 && (opponent.vsRank > me.rank)))
 				{
 					frame.console.log("远征. " + me.lordName+". 跳过: "+me.rank+" vs "+opponent.vsPlayerName+threatDegree+" lvl "+opponent.vsRank+" 活动物品: "+opponent.eventItemId);
@@ -461,8 +490,7 @@ var autoExpedition = function(frame)
 		}
 		else {
 			frame.console.log("远征. " + playerList[playerIndex]);
-			frame.location = "http://mn.mobcast.jp/mn/#/expedition";
-			frame.setTimeout(getChakiPoints, 3000);
+			frame.setTimeout(locateExpedition, 3000);
 		}
 	}; frame.setTimeout(checkPlayer, 2000);
 };
@@ -612,7 +640,10 @@ var getPoliticsData = function(frame, log) {
 		 				 + teamData.abilityEntity.politics3;
 
 		// playerGeneralCard.leaderBonusParam.{leadership: 0, offense: 0, defense: 0, wisdom: 12, politics: 0}
-		// playerGeneralSeasonRecord.bean Object drawn: 2games: 24guideDrawn: 0guideGames: 0guideLost: 0guideWon: 0id: Objectleague: 173005lost: 1 rankingAttackDamage: 11rankingKnockDown: 29rankingSoldier: -1totalAttack: 69totalAttackCritical: 18totalAttackDamage: 232980totalAttackTip: 6totalDead: 1totalDefense: 39totalDefenseCritical: 9totalDefenseDamage: 59007totalDefenseTip: 0totalKnockDown: 15totalSkill: 17totalSoldier: 0won: 21world: 17
+		// playerGeneralSeasonRecord.bean Object drawn: 2games: 24guideDrawn: 0guideGames: 0guideLost: 0
+		// guideWon: 0id: Objectleague: 173005lost: 1 rankingAttackDamage: 11rankingKnockDown: 29
+		// rankingSoldier: totalAttack: totalAttackCritical: totalAttackDamage: totalAttackTip: totalDead: totalDefense: 39
+		// totalDefenseCritical: totalDefenseDamage: totalDefenseTip: totalKnockDown: totalSkill: totalSoldier: won: world: 17
 		var politicsStr = "";
 		for (var i = 7; i < 10; ++i)
 		{
@@ -645,10 +676,11 @@ var getPoliticsData = function(frame, log) {
 			if (card.playerGeneralSeasonRecord && card.playerGeneralSeasonRecord.bean.totalAttackDamage)
 			{
 				var bean = card.playerGeneralSeasonRecord.bean;
-				var record = "合战. " + card.generalCard.bean.cardName + ". " + teamData.positionArray.list[i]
-									  + ". 击败." + bean.totalSkill + ". 溃退." + bean.totalDead
-									  + ". 攻击." + bean.totalAttack + ". 暴击." + bean.totalAttackCritical
+				var record = "合战. " + card.generalCard.bean.cardName + ". " + teamData.positionArray.list[i] + ". 参战." + bean.games
+									  + ". 击败." + bean.totalKnockDown + ". 溃退." + bean.totalDead
+									  + ". 攻击." + bean.totalAttack + ". 暴击." + bean.totalAttackCritical + ". 特技." + bean.totalSkill
 									  + ". 总伤害." + bean.totalAttackDamage + ". 单次伤害." + ((bean.totalAttackDamage / bean.totalAttack) >> 0)
+									  + ". 格挡." + bean.totalDefenseCritical + ""
 									  + ". 总损失." + bean.totalDefenseDamage + ". 总防御." + bean.totalDefense + ". 单次防御." + ((bean.totalDefenseDamage / bean.totalDefense) >> 0)
 									  ;
 				frame.console.log(record);
@@ -925,12 +957,13 @@ var autoPlay = function(nextLogin, fn) {
 			window.setTimeout(checkGame, 2000);
 		}
 		else {
-			var elem = document.getElementById('autoRecover');
-			if (elem)
-				game.contentWindow.doRecover = elem.value;
 			fn(game.contentWindow);
 		}
-	}; window.setTimeout(checkGame, 3000 * timeRatio);
+	};
+
+	if (fn) {
+		window.setTimeout(checkGame, 3000 * timeRatio);
+	}
 
 	if (nextLogin && nextLogin > 0)
 	{
@@ -943,22 +976,32 @@ var autoPlay = function(nextLogin, fn) {
 	}
 };
 
-var doStartInterval = function(fn) {
-	initConfig();
-	initPlayerList(18, 110);
-	window.console.log(playerList);
+var advancePlayerBy = function(step)
+{
+	if (step)
+		++playerIndex;
+	else
+		playerIndex += step;
+
+	if ((endPlayer != -1 && playerIndex == endPlayer) ||
+		playerIndex == playerList.length)
+	{
+		playerIndex = startPlayer;		
+	}
+}
+
+var startInterval = 0;
+var doStartInterval = function(fn, cb) {
+	if (!playerList || playerList.length == 0)
+	{
+		initPlayerList(18, 110);
+		window.console.log(playerList);		
+	}
+
+	updateConfig();
 
 	var forceNext = 0;
-	readyForNext = true;
-	playerIndex -= 1;
-
 	var doPlay = function() {
-		readyForNext = false;
-		++playerIndex;
-		if (playerIndex == playerList.length) {
-			playerIndex = 0;
-		}
-
 		window.clearTimeout(forceNext);
 		forceNext = window.setTimeout(function() {
 			window.console.log("Force Next.");
@@ -968,31 +1011,50 @@ var doStartInterval = function(fn) {
 		autoPlay(0, fn);
 	};
 
-	window.setInterval(function() {
+	if (startInterval) {
+		window.clearInterval(startInterval);
+	}
+	startInterval = window.setInterval(function() {
 		if (readyForNext) {
+			readyForNext = false;
+			if (cb)
+				cb();
 			doPlay();
 		}
 	}, 2000);
+
+	readyForNext = false;
+	doPlay();
 };
 
 var start = function() {
-	doStartInterval(autoExpedition);
+	doStartInterval(autoExpedition, function(){advancePlayerBy(1)});
 };
 
 var startFormation = function() {
-	doStartInterval(findOpponent);
+	doStartInterval(findOpponent, function(){advancePlayerBy(1)});
 };
 
 var startChakiCollection = function() {
-	doStartInterval(collectChakiAward);
+	doStartInterval(collectChakiAward, function(){advancePlayerBy(1)});
 };
 
 var startInfo = function() {
-	doStartInterval(logOutInfo);
+	doStartInterval(logOutInfo, function(){advancePlayerBy(1)});
 };
 
+var login = function () {
+	autoPlay();
+}
+
 var nextPlayer = function() {
-	if (!playerList)
+	var elem = document.getElementById("playerIndex");
+	elem.value += 1;
+	login();
+};
+
+var nextPlayer_old = function() {
+	if (!playerList || playerList.length == 0)
 	{
 		initConfig();
 		initPlayerList(18, 110);
@@ -1017,56 +1079,29 @@ var nextPlayer = function() {
 var nextGachaType = -1;
 var maxGachaCount = [];
 var curGachaCount = [];
-var doGacha = function(frame, type) {
+var doGacha = function(frame, config) {
 	if (!frame.rootScope) {
-		frame.console.log("acquirePresents. Can not find rootScope!");
+		frame.console.log("doGacha. Can not find rootScope!");
 		return;
 	}
 
 	var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
-	if ((type == 2 && gacha.walletData.gameGold < 30) || ++curGachaCount[type] > maxGachaCount[type]) {
-		frame.console.log("Gacha not available. GameGold: "+gacha.walletData.gameGold+". Count: "+curGachaCount[type]);		
+	if ((config.type == 2 && gacha.walletData.gameGold < 30) || ++curGachaCount[config.type] > maxGachaCount[config.type]) {
+		frame.console.log("Gacha not available. GameGold: "+gacha.walletData.gameGold+". Count: "+curGachaCount[config.type]);		
 		return;
 	}
 
-	gacha.gachaType = type;
+	gacha.gachaType = config.type;
 	gacha.gachaReListup();
 
 	var checkGachaResult = function() {
 		frame.console.log("Checking gacha result...");
+		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 		if (!gacha.listupData || !gacha.listupData.entity || !gacha.listupData.entity.generalCardList)
 			frame.setTimeout(checkGachaResult, 2000);
 		else
-			collectGacha(frame, type);
+			collectGacha(frame, config);
 	}; frame.setTimeout(checkGachaResult, 2000);
-};
-
-var doCollectCard = function(frame, type, gacha, index, card)
-{
-	gacha.gotoPageDischarge(index);
-
-	var checkDiscardData = function() {
-		if (!gacha.dischargeData) {
-			frame.setTimeout(checkDiscardData, 1000);
-		}
-		else {
-			for (var i = 0; i < gacha.dischargeData.list.length; i++) {
-				var card2 = gacha.dischargeData.list[i];
-				if (card2.generalCard.bean.cardRank == 0) {
-					frame.console.log("Replace. "+card.generalCard.bean.cardName+"=>"+card2.generalCard.bean.cardName);
-					gacha.setSelectDischargeCardIndex(i);
-					gacha.gotoPageConfirm();
-
-					frame.setTimeout(function () {
-						prepareGacha(frame, nextGachaType);
-					}, 2000);
-
-					return;
-				}
-			};			
-		}
-
-	}; frame.setTimeout(checkDiscardData, 1000);
 };
 
 // Object {generalCardId: 10046, dataStatus: 1, distribution: 1, cardName: "朝比奈泰能"}
@@ -1078,7 +1113,7 @@ var isSpecialCard = function(card)
 			;
 }
 
-var collectGacha = function(frame, type)
+var collectGacha = function(frame, config)
 {
 	var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 	var count = 0;
@@ -1086,22 +1121,22 @@ var collectGacha = function(frame, type)
 		var card = gacha.listupData.entity.generalCardList[i];
 		//card.bean.generalCardId
 		frame.console.log("Gacha. CardId: "+card.bean.generalCardId+", Name: "+card.bean.cardName);
-		if ((type == 0 && (card.bean.cardRank > 0 || isSpecialCard(card))) || (type == 2 && card.bean.cardRank >= 3)) {
+		if ((config.type == 0 && (card.bean.cardRank > 0 || isSpecialCard(card))) ||
+			(config.type == 2 && card.bean.cardRank >= 3))
+		{
 			++count;
 		}
 	};
 
 	if (count == 0) {
 		frame.setTimeout(function () {
-			prepareGacha(frame, nextGachaType);
+			prepareGacha(frame, config);
 		}, 2000);
 	}
-	else if (count == 1) {
+	else if (config.autoCollect && count == 1) {
 		for (var i = 0; i < gacha.listupData.entity.generalCardList.length; i++) {
 			var card = gacha.listupData.entity.generalCardList[i];
-			//card.bean.generalCardId
-			var curType = type;
-			if (type == 0 && (card.bean.cardRank == 1 || card.bean.cardRank == 2 || isSpecialCard(card))) {
+			if (config.type == 0 && (card.bean.cardRank == 1 || card.bean.cardRank == 2 || isSpecialCard(card))) {
 				gacha.gotoPageDischarge(i);
 				var checkDiscardData = function() {
 					if (!gacha.dischargeData) {
@@ -1111,13 +1146,13 @@ var collectGacha = function(frame, type)
 						var discardList = gacha.getDischargeCardList();
 						for (var i = 0; i < discardList.length; i++) {
 							var card2 = discardList[i];
-							if (card2.generalCard.bean.cardRank == 0 && !isSpecialCard(card2.generalCard) && curType == 0) {
+							if (card2.generalCard.bean.cardRank == 0 && !isSpecialCard(card2.generalCard) && config.type == 0) {
 								frame.console.log("Replace. "+card.bean.cardName+"=>"+card2.generalCard.bean.cardName);
 								gacha.setSelectDischargeCardIndex(i);
 								gacha.gotoPageResult();
 
 								frame.setTimeout(function () {
-									prepareGacha(frame, nextGachaType);
+									prepareGacha(frame, config);
 								}, 2000);
 								return;
 							}
@@ -1125,20 +1160,14 @@ var collectGacha = function(frame, type)
 					}
 				}; frame.setTimeout(checkDiscardData, 1000);
 			}
-			else if (type == 2 && card.bean.cardRank >= 3) {
+			else if (config.type == 2 && card.bean.cardRank >= 3) {
 				return;
 			}
 		};
 	}
-
-//setSelectDischargeCardIndex
-
-//backPageListUp
-//gotoPageDischarge
-//gotoPageConfirm
 };
 
-var prepareGacha = function(frame, type) {
+var prepareGacha = function(frame, config) {
 	frame.location = "http://mn.mobcast.jp/mn/#/gacha/top?"+Math.random();
 	var checkGacha = function() {
 		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
@@ -1148,35 +1177,19 @@ var prepareGacha = function(frame, type) {
 		else {
 			if (gacha && gacha.listupData && gacha.listupData.entity)
 				gacha.listupData.entity.generalCardList = null;
-			doGacha(frame, type);
+			doGacha(frame, config);
 		}
 	}; frame.setTimeout(checkGacha, 1000);
 };
 
-var gachaNormal = function(frame) {
-	nextGachaType = 0;
-	startGacha(frame, 0);
-};
-
-var gachaMoney = function(frame) {
-	nextGachaType = 2;
-	startGacha(frame, 2);
-};
-
-var startGacha = function(type, count, frame)
+// type. {2: money, 0: normal}
+var startGacha = function(config, frame)
 {
-	if (!frame) {
-		if (typeof game != "undefined" && typeof game.contentWindow != "undefined")
-  			frame = game.contentWindow;
-  		else
-  			frame = window;
-	}
+	maxGachaCount[config.type] = (!config.count) ? 1 : config.count;
+	curGachaCount[config.type] = 0;
+ 	nextGachaType = config.type;
 
-	maxGachaCount[type] = (!count) ? 1 : count;
-	curGachaCount[type] = 0;
-
- 	nextGachaType = type;
-	prepareGacha(frame, type);
+	prepareGacha(frame ? frame : getFrame(), config);
 };
 
 var newAccount = function() {

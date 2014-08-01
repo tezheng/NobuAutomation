@@ -5,22 +5,33 @@
 <body>
 	<h3>Config</h3>
 	<div>
-		<span>Time delay: </span><span><input id = "timeDelay" value="50"></span>
+		<span>Time delay: </span><span><input id = "timeDelay" value="50" style="width:40px"></span>
+		<span>Time ratio: </span><span><input id = "timeRatio" value="1" style="width:40px"></span>
 	</div>
 	<div>
-		<span>Time ratio: </span><span><input id = "timeRatio" value="1"></span>
-	</div>
-	<div>
-		<span>First player: </span><span><input id = "playerIndex" value="0"></span>
+		<span>First player: </span><span><input id = "playerIndex" value="0" style="width:40px"></span>
+		<span>Last player: </span><span><input id = "playerIndex" value="0" style="width:40px"></span>
 	</div>
 	<h3>Play</h3>
-	</div>
+	<div>
 		<span>Password: </span><span><input type = "password" id = "password" value="" placeholder=""></span>
+	</div>
+	<div>
 		<span><button type = "button" onclick = "javascript:(start())">Start</button></span>
 		<span><button type = "button" onclick = "javascript:(startFormation())">Formation</button></span>
 		<span><button type = "button" onclick = "javascript:(nextPlayer())">Next Player</button></span>
 		<span><button type = "button" onclick = "javascript:(startChakiCollection())">Chaki</button></span>
 		<span><button type = "button" onclick = "javascript:(startInfo())">Info</button></span>
+	</div>
+	<h3>Function</h3>
+	<div>
+		<span>----</span>
+		<span><button type = "button" onclick = "javascript:(acquirePresents(getFrame()))">Present</button></span>		
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':0}))">GN</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':2}))">GM</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':20}))">GN20_nc</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':8,'weekly':true}))">GachaWeekly</button></span>
+		<span>----</span>
 	</div>
 	<h3>Game</h3>
 	<div>
@@ -31,4 +42,5 @@
 		<span>User Name: </span>
 		<span id = "username"></span>
 	</div>
+	<h3>Log</h3>
 </body>
