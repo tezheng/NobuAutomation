@@ -2,32 +2,35 @@
 	<meta http-equiv = "Content-Type" content = "text/html; charset=utf-8">
 	<script type="text/javascript" language="javascript" src="sprintf.js"></script>
 	<script type="text/javascript" language="javascript" src="nobu_loader.js"></script>
+	<script type="text/javascript" language="javascript" src="manager.js"></script>
 </head>
 <body>
 	<h3>Config</h3>
 	<div>
 		<span>Time ratio: </span><span><input id = "timeRatio" value="1" style="width:40px"></span>
-		<span>Count: </span><span><input id = "count" value="1" style="width:40px"></span>
+		<span>Count: </span><span><input id = "count" value="9" style="width:40px"></span>
+		<span><button type = "button" id="startLoop">Start Loop</button></span>
 	</div>
 	<div>
 		<span>URL: </span><span><input id = "newUserURL" value="" style="width:300px"></span>
 	</div>
 	<div>
-	<span>Leader: 
-		<select selected="织田信长">
+		<span>Leader: 
+			<select selected="织田信长">
 			<option value="1">织田信长</option>
 			<option value="0">武田信玄</option>
 			<option value="2">毛利元就</option>
-		</select>
-	</span>
-	<span>City: 
-	<select selected="1">
-		<option value="0">虾夷</option>
-		<option value="1">织田信长</option>
-		<option value="2">毛利元就</option>
-	</select>
-	</span>
-		<span><button type = "button" onclick = "javascript:(newAccount())">Start</button></span>
+			</select>
+		</span>
+		<span>City: 
+			<select selected="1">
+			<option value="0">虾夷</option>
+			<option value="1">织田信长</option>
+			<option value="2">毛利元就</option>
+			</select>
+		</span>
+		<span><button type = "button" id="start">Start</button></span>
+		<span><button type = "button" id="clear">Clear</button></span>
 	</div>
 	<h3>Functions</h3>
 	<div>
@@ -35,9 +38,9 @@
 	</div>
 	<div>
 		<span>------</span>
-		<span><button type = "button" onclick = "javascript:(acquirePresents(getFrame()))">Present</button></span>		
-		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':10,'autoCollect':true}))">GN10</button></span>
-		<span><button type = "button" onclick = "javascript:(startGacha({'type':2,'count':10,'autoCollect':true}))">GM10</button></span>
+		<span><button type = "button" id="present">Present</button></span>		
+		<span><button type = "button" id="gn10">GN10</button></span>
+		<span><button type = "button" id="gm10">GM10</button></span>
 		<span>------</span>
 	</div>
 	<h3>Game</h3>

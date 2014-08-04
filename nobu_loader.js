@@ -239,6 +239,7 @@ var autoTutorialBase = function(frame)
             states.click_finish();
 
             frame.setTimeout(function() {
+            	frame.tutorialDone = true;
             	acquirePresents(frame);
                 //window.location="http://mn.mobcast.jp/mn/#/invite/invite";
                 // frame.setTimeout(function() {
@@ -255,6 +256,10 @@ var autoTutorialBase = function(frame)
             frame.setTimeout(frame.autoTutorial, 200);
             frame.tutorial.click();
         }
+    }
+    else if (frame.rootScope.tutorial.currentPhaseIndex == 9)
+    {
+    	return;
     }
     else
     {
@@ -1544,6 +1549,49 @@ var startGacha = function(config, frame)
 	prepareGacha(frame ? frame : getFrame(), config);
 };
 
+var isGameStarted = function(frame) {
+	if (!frame || !frame.angular || !frame.angular.element)
+		return false;
+
+	var rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+	if (!rootScope || !rootScope.$$childHead)
+		return false;
+
+	return true;
+};
+
+var isInGame = function(frame)
+{
+	if (!frame || !frame.angular || !frame.angular.element)
+		return false;
+
+	var rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+	if (!rootScope || !rootScope.$$childHead)
+		return false;
+
+	var player = findChildScope(rootScope, function(childscope) { return typeof childscope.myData != "undefined"; });
+	if (!player)
+		return false;
+
+	return true;
+};
+
+var isInTutorial = function(frame)
+{
+	if (!frame || !frame.angular || !frame.angular.element)
+		return false;
+
+	var rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+	if (!rootScope || !rootScope.$$childHead || !rootScope.tutorial)
+		return false;
+
+	var tutorial = findChildScope(rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
+	if (!tutorial)
+		return false;
+
+	return true;
+};
+
 var newAccount = function() {
 	var state = 0;
 	var lastLocation = "";
@@ -1552,51 +1600,27 @@ var newAccount = function() {
 	var count = document.getElementById("count").value;
 	var game = createGame(newUserURL);
 
-	var isInGame = function(frame)
-	{
-		if (!frame || !frame.angular || !frame.angular.element)
-			return false;
-
-		var rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-		if (!rootScope || !rootScope.$$childHead)
-			return false;
-
-		return true;
-	}
-
-	var isInTutorial = function(frame)
-	{
-		if (!frame || !frame.angular || !frame.angular.element)
-			return false;
-
-		var rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-		if (!rootScope || !rootScope.$$childHead || !rootScope.tutorial)
-			return false;
-
-		var tutorial = findChildScope(rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
-		if (!tutorial)
-			return false;
-
-		return true;
-	}
-
 	var autoRun = function() {
-		game = document.getElementById("game");
-		var frame = game.contentWindow;
-
-		frame.autoTutorial = function () {
-			window.console.log("frame.autoTutorial");
-			autoTutorialBase(game.contentWindow);
-		};
-
-		frame.lastItemIndex = -1;
-
 		var checkEnv = function () {
-			if (!isInGame(frame)) {
-				frame.setTimeout(checkEnv, 2000);
+			window.console.log("Checking env...");
+
+			game = document.getElementById("game");
+			var frame = game.contentWindow;
+
+			if (isInGame(frame))
+				return;
+
+			if (!isInTutorial(frame)) {
+				window.setTimeout(checkEnv, 2000);
 				return;				
 			}
 
+			frame.autoTutorial = function () {
+				window.console.log("frame.autoTutorial");
+				autoTutorialBase(game.contentWindow);
+			};
+
+			frame.lastItemIndex = -1;
 			frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
 			frame.tutorial = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
 			if (frame.rootScope.tutorial.currentPhaseIndex == 0)
@@ -1741,4 +1765,41 @@ var newAccount = function() {
 	// 	window.setTimeout(openGame, 8000 * timeRatio);
 	// 	window.setTimeout(autoRun, 18000 * timeRatio);
 	// }, 0);
+};
+
+var newAccountLoop = function()
+{
+	var count = document.querySelector("#count").value;
+	var doCreateAccount = function() {
+		if (count-- <= 0) {
+			return;
+		}
+		document.querySelector("#count").value = count;
+
+		removeAll();
+		window.setTimeout(newAccount, 1000);
+		window.setTimeout(checkStatus, 3000);
+	};
+
+	var forceRetry = 0;
+	var checkStatus = function() {
+		var frame = getFrame();
+		if (!isGameStarted(frame)) {
+			window.console.log("Checking tutorial status...");
+			window.setTimeout(checkStatus, 3000);
+			return;
+		}
+
+		if (frame.tutorialDone && isInGame(frame)) {
+			frame.tutorialDone = true;
+			window.clearTimeout(forceRetry);
+			forceRetry = window.setTimeout(doCreateAccount, 60000);
+			window.setTimeout(doCreateAccount, 3000);
+		}
+		else {
+			window.console.log("Checking tutorial status...");
+			window.setTimeout(checkStatus, 3000);
+		}
+	}
+	doCreateAccount();
 };
