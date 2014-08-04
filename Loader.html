@@ -1,5 +1,6 @@
 <head>
 	<meta http-equiv = "Content-Type" content = "text/html; charset=utf-8">
+	<script type="text/javascript" language="javascript" src="sprintf.js"></script>
 	<script type="text/javascript" language="javascript" src="nobu_loader.js"></script>
 </head>
 <body>
@@ -26,27 +27,29 @@
 		<span><button type = "button" onclick = "javascript:(nextPlayer())">Next Player</button></span>
 		<span><button type = "button" onclick = "javascript:(startChakiCollection())">Chaki</button></span>
 		<span><button type = "button" onclick = "javascript:(startInfo())">Info</button></span>
+		<span><button type = "button" onclick = "javascript:(collectCityData())">City</button></span>
 	</div>
 	<h3>Function</h3>
 	<div>
-		<span>----</span>
+		<span>-</span>
+		<span><button type = "button" onclick = "javascript:(gatherInfo())">Info</button></span>
 		<span><button type = "button" onclick = "javascript:(acquirePresents(getFrame()))">Present</button></span>		
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':0}))">GN</button></span>
-		<span><button type = "button" onclick = "javascript:(startGacha({'type':2}))">GM</button></span>
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':20}))">GN20_nc</button></span>
-		<span><button type = "button" onclick = "javascript:(startGacha({'type':8,'weekly':true}))">GachaWeekly</button></span>
-		<span>----</span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':8,'weekly':true}))">GWeekly</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':2}))">GM</button></span>
+		<span>-</span>
 	</div>
 	<h3>Game</h3>
 	<div>
 		<span>User ID: </span>
 		<span id = "userid"></span>
+		<span>  , User Name: </span>
+		<span id = "username"></span>
 	</div>
 	<div id = "game_placeholder">
 	</div>
-	<div>
-		<span>User Name: </span>
-		<span id = "username"></span>
-	</div>
 	<h3>Log</h3>
+	<div id = "log">
+	</div>
 </body>
