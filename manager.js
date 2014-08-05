@@ -232,6 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
   select('#startLoop').addEventListener('click', function(){newAccountLoop()});
   select('#clear').addEventListener('click', function(){removeAll()});
   select('#present').addEventListener('click', function(){acquirePresents(getFrame())});
+  select('#invite').addEventListener('click', function(){openInvitePage()});
   select('#gn10').addEventListener('click', function(){startGacha({'type':0,'count':10,'autoCollect':true})});
   select('#gm10').addEventListener('click', function(){startGacha({'type':2,'count':10,'autoCollect':true})});
 });

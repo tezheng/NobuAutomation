@@ -595,6 +595,7 @@ var getSeriesData = function(frame, log) {
 			return;
 		}
 
+		// if (true) {
 		if (series.seriesList.length == 0 && series.day > 0) {
 			var days = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.previousDay != "undefined"; });
 			days.previousDay();
@@ -1570,7 +1571,7 @@ var isInGame = function(frame)
 		return false;
 
 	var player = findChildScope(rootScope, function(childscope) { return typeof childscope.myData != "undefined"; });
-	if (!player)
+	if (!player || player.isTutorial)
 		return false;
 
 	return true;
@@ -1655,6 +1656,9 @@ var newAccount = function() {
 				return true;
 		}
 
+		if (isGameStarted())
+			return;
+
 		if (!checkStatus()) {
 			window.console.log("Checking regist...");
 			window.setTimeout(regist, 2000);
@@ -1677,6 +1681,9 @@ var newAccount = function() {
 			else
 				return true;
 		}
+
+		if (isGameStarted())
+			return;
 
 		if (!checkStatus()) {
 			window.console.log("Checking createUser...");
@@ -1701,6 +1708,9 @@ var newAccount = function() {
 			else
 				return true;
 		}
+
+		if (isGameStarted())
+			return;
 
 		if (!checkStatus()) {
 			window.console.log("Checking visit...");
@@ -1802,4 +1812,9 @@ var newAccountLoop = function()
 		}
 	}
 	doCreateAccount();
+};
+
+var openInvitePage = function() {
+	var frame = getFrame();
+	frame.location.href = "http://mn.mobcast.jp/mn/#/invite/invite?"+Math.random();
 };
