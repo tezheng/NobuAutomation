@@ -190,7 +190,7 @@ var generatePasswords = function () {
     return passwords;
 };
 
-var acquirePresents = function(frame) {
+var acquirePresents = function(frame, config) {
 	var rootScope = getRootScope(frame);
 	var overlay = findChildScope(rootScope, function(childscope) {
 		return typeof childscope.showPresentBox != "undefined" &&
@@ -202,15 +202,64 @@ var acquirePresents = function(frame) {
 	var getAll = function() {
 		var checkPresents = function () {
 			var present = findChildScope(rootScope, function(childscope) { return typeof childscope.acquireAllPresents != "undefined"; });
-			if (!present)
+			if (!present) {
 				frame.setTimeout(checkPresents, 1000);
-			else
-				present.acquireAllPresents();
+				return;
+			}
+
+			present.acquireAllPresents();
+	       	if (config && config.fancyGacha) {
+        		frame.setTimeout(function() {
+					tryFancyGacha(frame);            			
+        		}, 2000);
+        	}
 		}; frame.setTimeout(checkPresents, 1000);
 	}; frame.setTimeout(getAll, 1000);
 };
 
-var autoTutorialBase = function(frame)
+var tryFancyGacha = function(frame) {
+	frame.location = "http://mn.mobcast.jp/mn/#/gacha/top?"+Math.random();
+	getRootScope(frame);
+
+	var checkGacha = function() {
+		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+		if (!gacha || !gacha.walletData) {
+			frame.setTimeout(checkGacha, 1000);
+			return;
+		}
+
+		if (gacha.walletData.gameGold < 300)
+			return;
+
+		gacha.gachaType = 15;
+		gacha.gotoPageListUp();
+
+		var checkGachaResult = function() {
+			frame.console.log("Checking gacha result...");
+			var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+			if (!gacha.listupData || !gacha.listupData.entity || !gacha.listupData.entity.generalCardList) {
+				frame.setTimeout(checkGachaResult, 2000);
+				return;
+			}
+
+			for (var i = 0; i < gacha.listupData.entity.generalCardList.length; i++) {
+				var c = gacha.listupData.entity.generalCardList[i];
+				frame.console.log("Gacha. CardId: "+c.bean.generalCardId+" // Name: "+c.bean.cardName+((c.bean.cardRank|0)+1));
+
+				// 4星卡, 直接停掉
+				if (c.bean.cardRank > 2) {
+					window.clearTimeout(window.forceRetryNewAccount);
+					return;
+				}
+				else {
+					frame.tutorialDone = true;
+				}
+			};
+		}; frame.setTimeout(checkGachaResult, 2000);	
+	}; frame.setTimeout(checkGacha, 1000);
+};
+
+var autoTutorialBase = function(frame, config)
 {
     if (frame.rootScope.tutorial.currentPhaseIndex == 0)
     {
@@ -255,8 +304,14 @@ var autoTutorialBase = function(frame)
             states.click_finish();
 
             frame.setTimeout(function() {
-            	frame.tutorialDone = true;
-            	acquirePresents(frame);
+            	acquirePresents(frame, config);
+
+            	if (config && config.fancyGacha) {
+
+            	}
+				else {
+					frame.tutorialDone = true;
+				}
                 //window.location="http://mn.mobcast.jp/mn/#/invite/invite";
                 // frame.setTimeout(function() {
                 //     $("input[name='codeInput']").value = "2xwy472";
@@ -800,7 +855,8 @@ var getPoliticsData = function(frame, log) {
 
 		var initCardInfo = function() {
 			frame.playerInfo.droppable = [];
-			frame.playerInfo.gold = [];
+			frame.playerInfo.goldOn = [];
+			frame.playerInfo.goldOff = [];
 			frame.playerInfo.cur = [];
 			frame.playerInfo.cur.duty = [];
 			frame.playerInfo.cur.bench = [];
@@ -837,8 +893,6 @@ var getPoliticsData = function(frame, log) {
 				recordCard(card, season, frame.playerInfo.droppable);
 			}
 			else if (season < 10 && seasonData[season] == "2" && !noDropCard(card.generalCard)) {
-				// var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1}
-				// frame.playerInfo.droppable.push(data);
 				recordCard(card, season, frame.playerInfo.droppable);
 			}
 			else if (season < 9 && seasonData[season + 1] == "2" && i > 9 && !noDropCard(card.generalCard)) {
@@ -852,24 +906,11 @@ var getPoliticsData = function(frame, log) {
 			{
 				var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1,"onduty":(i < 10)
 						   ,"expired":(season < 10 && seasonData[season] == "2")};
-				frame.playerInfo.gold.push(data);
+				if (i < 10)
+					frame.playerInfo.goldOn.push(data);
+				else
+					frame.playerInfo.goldOff.push(data);					
 			}
-
-			// var curSeason = season + 1;
-			// if (curSeason < 10 && seasonData[curSeason] == "2")
-			// {
-			// 	if (i < 7) {
-			// 		++expiredCardOnDuty;
-			// 		strExpiringCardOnDuty += card.generalCard.bean.cardName + ":"+curSeason+"期|";
-			// 	}
-			// 	else if (i > 9) {
-			// 		++expiredCardBench;
-			// 		strExpiringCardBench += card.generalCard.bean.cardName + ":"+curSeason+"期|";
-			// 	}
-			// }
-			// else if (card.generalCard.bean.cardRank > 2) {
-			// 	strBenchGoldCard += card.generalCard.bean.cardName + ":"+curSeason+"期|";				
-			// }
 
 			if (i > 9) {
 				var season = card.playerGeneralCard.bean.season + 1;
@@ -889,12 +930,8 @@ var getPoliticsData = function(frame, log) {
 		log += ";" + (frame.playerInfo.normalText("替补内政", frame.playerInfo.nxt.politics));
 		log += ";" + (frame.playerInfo.normalText("参战即将过期", frame.playerInfo.nxt.duty));
 		log += ";" + (frame.playerInfo.normalText("替补即将过期", frame.playerInfo.nxt.bench));
-		log += ";" + (frame.playerInfo.normalText("四星", frame.playerInfo.gold));
-
-		// log += ";替补内政:"+subtitudePolitics+";" + "<font color='blue'><b>" + ((strPoliticsCandidate.length > 0) ? strPoliticsCandidate : "无") + "</b></font>";
-		// log += ";参战过期武将:"+expiredCardOnDuty+";" + "<font color='red'><b>" + strExpiringCardOnDuty + "</b></font>";
-		// log += ";替补4星武将;" + "<font color='blue'><b>" + strBenchGoldCard + "</font></b>";
-		// log += ";替补过期武将:"+expiredCardBench+";" + "<font color='red'><b>" + strExpiringCardBench + "</b></font>";
+		log += ";" + (frame.playerInfo.normalText("四星参战", frame.playerInfo.goldOn));
+		log += ";" + (frame.playerInfo.normalText("四星替补", frame.playerInfo.goldOff));
 
 		// logout
 		frame.logDone = true; frame.logtxt = log;
@@ -1068,7 +1105,8 @@ var gatherInfo = function()
 		appendLog(addCategoryHtml("替补内政", frame.playerInfo.nxt.politics), logArea);
 		appendLog(addCategoryHtml("参战即将过期", frame.playerInfo.nxt.duty), logArea);
 		appendLog(addCategoryHtml("替补即将过期", frame.playerInfo.nxt.bench), logArea);
-		appendLog(addCategoryHtml("四星", frame.playerInfo.gold), logArea);
+		appendLog(addCategoryHtml("四星参战", frame.playerInfo.goldOn), logArea);
+		appendLog(addCategoryHtml("四星替补", frame.playerInfo.goldOff), logArea);
 	};
 
 	var frame = getFrame();
@@ -1442,7 +1480,7 @@ var doGacha = function(frame, config) {
 			return;
 		}
 
-		gacha.gachaType = 8
+		gacha.gachaType = 8;
 		gacha.gotoPageListUp();
 	}
 	else {
@@ -1527,9 +1565,6 @@ var isUsableBronze = function(card) {
 
 var isSuperbBronze = function(card) {
 	return isHighPolitics(card) || isMediumPolitics(card)
-		|| card.bean.generalCardId == 10266 // Name: 竹中重治2
-		|| card.bean.generalCardId == 10304 // Name: 真田昌幸2
-
 		|| card.bean.generalCardId == 10209 // Name: 前田利家2
 		|| card.bean.generalCardId == 10265 // Name: 山本晴幸2
 		|| card.bean.generalCardId == 10034 // Name: 片倉重長2
@@ -1546,8 +1581,15 @@ var isSuperbBronze = function(card) {
 		|| card.bean.generalCardId == 10244 // Name: 太田資正2
 		|| card.bean.generalCardId == 10216 // Name: 後藤基次2
 		|| card.bean.generalCardId == 10213 // Name: 福島正則2
-		|| card.bean.generalCardId == 10215 // Name: 黒田長政2
 	;
+};
+
+var isGoodBronze = function(card) {
+	return false
+		|| card.bean.generalCardId == 10215 // Name: 黒田長政2
+		|| card.bean.generalCardId == 10266 // Name: 竹中重治2
+		|| card.bean.generalCardId == 10304 // Name: 真田昌幸2
+	;	
 };
 
 var isLowendSilver = function(card) {
@@ -1585,6 +1627,7 @@ var isHighPolitics = function(card) {
 		|| card.bean.generalCardId == 10352 // Name: 直江兼続3
 	;
 };
+//CardId: 10585 // Name: 黒田長政4
 
 var isAutoReplacablePolitics = function(card) {
 	return isMediumPolitics(card) || isLowendPolitics(card) || isCrappyPolitics(card);
@@ -1793,24 +1836,6 @@ var collectGacha = function(frame, config)
 			if (candidates.length == 0)
 				return;
 
-			for (var i = 0; i < candidates.length; i++) {
-				var item = candidates[i];
-				frame.console.log("Candidate: "+item.generalCard.bean.cardName
-											   +((item.generalCard.bean.cardRank|0)+1)
-											   +"."+((item.playerGeneralCard.bean.season|0)+1)+"期"
-											   +".Index:"+item.replaceIndex
-								 );
-			};
-
-			if ((card.bean.cardRank == 1 && isSuperbBronze(card))
-				|| (card.bean.cardRank == 1 && politicsThreshold < 75 && isLowendPolitics(card))
-				|| (card.bean.cardRank == 2 && !isLowendSilver(card)))
-			{
-				frame.console.log(frame.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
-				gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
-				gacha.gotoPageResult();
-			}
-
 			var elem = window.document.getElementById("gacha");
 			if (elem)
 			{
@@ -1830,6 +1855,24 @@ var collectGacha = function(frame, config)
 							  +".Index:"+item.replaceIndex;
 					appendLog(str, gachaArea);
 				};					
+			}
+
+			for (var i = 0; i < candidates.length; i++) {
+				var item = candidates[i];
+				frame.console.log("Candidate: "+item.generalCard.bean.cardName
+											   +((item.generalCard.bean.cardRank|0)+1)
+											   +"."+((item.playerGeneralCard.bean.season|0)+1)+"期"
+											   +".Index:"+item.replaceIndex
+								 );
+			};
+
+			if ((card.bean.cardRank == 1 && isSuperbBronze(card))
+				|| (card.bean.cardRank == 1 && politicsThreshold < 75 && isLowendPolitics(card))
+				|| (card.bean.cardRank == 2 && !isLowendSilver(card)))
+			{
+				frame.console.log(frame.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
+				gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
+				gacha.gotoPageResult();
 			}
 
 			gotoNextStep();
@@ -1938,7 +1981,7 @@ var isInTutorial = function(frame)
 	return true;
 };
 
-var newAccount = function() {
+var newAccount = function(config) {
 	var state = 0;
 	var lastLocation = "";
 	var timeRatio = document.getElementById("timeRatio").value;
@@ -1963,7 +2006,7 @@ var newAccount = function() {
 
 			frame.autoTutorial = function () {
 				window.console.log("frame.autoTutorial");
-				autoTutorialBase(game.contentWindow);
+				autoTutorialBase(game.contentWindow, config);
 			};
 
 			frame.lastItemIndex = -1;
@@ -2001,7 +2044,9 @@ var newAccount = function() {
 				return true;
 		}
 
-		if (isGameStarted())
+		game = document.getElementById("game");
+		var frame = game.contentWindow;
+		if (isGameStarted(frame))
 			return;
 
 		if (!checkStatus()) {
@@ -2010,7 +2055,7 @@ var newAccount = function() {
 			return;
 		}
 
-		var frame = game.contentWindow; lastLocation = frame.location.href;
+		lastLocation = frame.location.href;
 		var button = frame.$("form[name='frmMain']");
 		button.submit();
 
@@ -2027,7 +2072,9 @@ var newAccount = function() {
 				return true;
 		}
 
-		if (isGameStarted())
+		game = document.getElementById("game");
+		var frame = game.contentWindow;
+		if (isGameStarted(frame))
 			return;
 
 		if (!checkStatus()) {
@@ -2035,8 +2082,8 @@ var newAccount = function() {
 			window.setTimeout(createUser, 2000);
 			return;
 		}
+		lastLocation = frame.location.href;
 
-		var frame = game.contentWindow; lastLocation = frame.location.href;
 		var input = frame.$("input[name='NAME']");
 		input.val("モブ"+generatePasswords()+"ブ");
 		frame.$("form[name=frmMain]").submit();
@@ -2054,7 +2101,9 @@ var newAccount = function() {
 				return true;
 		}
 
-		if (isGameStarted())
+		game = document.getElementById("game");
+		var frame = game.contentWindow;
+		if (isGameStarted(frame))
 			return;
 
 		if (!checkStatus()) {
@@ -2062,8 +2111,8 @@ var newAccount = function() {
 			window.setTimeout(visit, 2000);
 			return;
 		}
+		lastLocation = frame.location.href;
 
-		var frame = game.contentWindow; lastLocation = frame.location.href;
 		var button = frame.$("[name='INSTALL']");
 
 		var url = button.attr('onclick');
@@ -2122,41 +2171,41 @@ var newAccount = function() {
 	// }, 0);
 };
 
-var newAccountLoop = function()
+var newAccountLoop = function(config)
 {
 	var count = document.querySelector("#count").value;
-	var doCreateAccount = function() {
+	var doCreateAccount = function(config) {
 		if (count-- <= 0) {
 			return;
 		}
 		document.querySelector("#count").value = count;
 
 		removeAll();
-		window.setTimeout(newAccount, 1000);
+		window.setTimeout(function() { newAccount(config); }, 1000);
 		window.setTimeout(checkStatus, 3000);
 	};
 
-	var forceRetry = 0;
+	window.forceRetryNewAccount = 0;
 	var checkStatus = function() {
 		var frame = getFrame();
-		if (!isGameStarted(frame)) {
-			window.console.log("Checking tutorial status...");
-			window.setTimeout(checkStatus, 3000);
-			return;
-		}
+		// if (!isGameStarted(frame)) {
+		// 	window.console.log("Checking tutorial status...");
+		// 	window.setTimeout(checkStatus, 3000);
+		// 	return;
+		// }
 
-		if (frame.tutorialDone && isInGame(frame)) {
-			frame.tutorialDone = true;
-			window.clearTimeout(forceRetry);
-			forceRetry = window.setTimeout(doCreateAccount, 60000);
-			window.setTimeout(doCreateAccount, 3000);
+		if (frame.tutorialDone) {
+			frame.tutorialDone = false;
+			window.clearTimeout(window.forceRetryNewAccount);
+			window.forceRetryNewAccount = window.setTimeout(function() { doCreateAccount(config); }, 60000);
+			window.setTimeout(function() { doCreateAccount(config); }, 3000);
 		}
 		else {
 			window.console.log("Checking tutorial status...");
 			window.setTimeout(checkStatus, 3000);
 		}
 	}
-	doCreateAccount();
+	doCreateAccount(config);
 };
 
 var openInvitePage = function() {
@@ -2197,4 +2246,7 @@ var startWeeklyGacha = function()
 
 
 window.realAlert = window.alert;
-window.alert =  function(msg) { window.console.log("Redirect alert. "+msg); };
+window.alert = function(msg) { window.console.log("Redirect alert. "+msg); };
+window.showModalDialog = function(msg) { window.console.log("Redirect alert. "+msg); };
+window.__proto__.alert = function(msg) { window.console.log("Redirect alert. "+msg); };
+window.__proto__.showModalDialog = function(msg) { window.console.log("Redirect alert. "+msg); };

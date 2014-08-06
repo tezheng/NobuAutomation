@@ -228,8 +228,8 @@ function onload() {
 
 document.addEventListener('DOMContentLoaded', function() {
   onload();
-  select('#start').addEventListener('click', function(){newAccount()});
-  select('#startLoop').addEventListener('click', function(){newAccountLoop()});
+  select('#start').addEventListener('click', function(){newAccount({'fancyGacha':true})});
+  select('#startLoop').addEventListener('click', function(){newAccountLoop({'fancyGacha':true})});
   select('#clear').addEventListener('click', function(){removeAll()});
   select('#present').addEventListener('click', function(){acquirePresents(getFrame())});
   select('#invite').addEventListener('click', function(){openInvitePage()});
