@@ -28,6 +28,7 @@
 		<span><button type = "button" onclick = "javascript:(startChakiCollection())">Chaki</button></span>
 		<span><button type = "button" onclick = "javascript:(startInfo())">Info</button></span>
 		<span><button type = "button" onclick = "javascript:(collectCityData())">City</button></span>
+		<span><button type = "button" onclick = "javascript:(getInvitatoinInfo())">Invitation</button></span>
 	</div>
 	<h3>Function</h3>
 	<div>
@@ -35,8 +36,9 @@
 		<span><button type = "button" onclick = "javascript:(gatherInfo())">Info</button></span>
 		<span><button type = "button" onclick = "javascript:(acquirePresents(getFrame()))">Present</button></span>		
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':0}))">GN</button></span>
-		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':20}))">GN20_nc</button></span>
-		<span><button type = "button" onclick = "javascript:(startGacha({'type':8,'weekly':true}))">GWeekly</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':40,'safeCollect':true}))">GN40ac</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':20}))">GN20nc</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':8,'weekly':true}))">GW</button></span>
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':2}))">GM</button></span>
 		<span>-</span>
 	</div>
@@ -48,6 +50,9 @@
 		<span id = "username"></span>
 	</div>
 	<div id = "game_placeholder">
+	</div>
+	<h3>Gacha</h3>
+	<div id = "gacha">
 	</div>
 	<h3>Log</h3>
 	<div id = "log">
