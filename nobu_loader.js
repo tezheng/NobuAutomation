@@ -42,7 +42,7 @@ var endPlayer = 0;
 var playerList = [];
 var password = "tzh20080426";
 var playerCount = 18;
-var playerCountYahoo = 120;
+var playerCountYahoo = 123;
 
 var updateConfig = function(cfgCB) {
 	timeDelay = document.getElementById("timeDelay").value;	
@@ -361,7 +361,7 @@ var autoExpedition = function(frame)
 				frame.setTimeout(getChakiPoints, 4000);				
 			}
 			else {
-				frame.setTimeout(function() { readyForNext = true; }, 1000);
+				callForNextPlayer(frame);
 			}
 		}; frame.setTimeout(checkRecover, 2000);
 	};
@@ -451,7 +451,7 @@ var autoExpedition = function(frame)
 					}, 6000);
 			}
 			else {
-				frame.setTimeout(function() { readyForNext = true; }, 6000);
+				callForNextPlayer(frame, 6000);
 			}
 		}, 2000);
 	};
@@ -567,7 +567,7 @@ var collectChakiAward = function(frame) {
 				}
 			}
 		}
-		frame.setTimeout(function() { readyForNext = true; }, 4000);
+		callForNextPlayer(frame, 4000);
 	};
 
 	var tryCheckChaki = function() {
@@ -668,7 +668,7 @@ var getConquestInfo = function(frame, log)
 			frame.console.log("" + playerIndex + ";" + playerList[playerIndex] + str);
 		}
 
-		frame.setTimeout(function() { readyForNext = true; }, 1000);
+		callForNextPlayer(frame);
 	};
 
 	frame.location = "http://mn.mobcast.jp/mn/#/conquest/conquest";
@@ -1028,7 +1028,7 @@ var logOutInfo = function(frame, logFn) {
 			logFn(frame, frame.logtxt);
 		else
 			frame.console.log(frame.logtxt);
-		frame.setTimeout(function() { readyForNext = true; }, 1000);
+		callForNextPlayer(frame);
 	}
 
 	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
@@ -1121,7 +1121,7 @@ var findOpponent = function(frame) {
 			}; frame.setTimeout(openOpponentInfo, 2000);
 		}
 		else {
-			frame.setTimeout(function() { readyForNext = true; }, 1000);
+			callForNextPlayer(frame);
 		}
 	}; frame.setTimeout(getOpponent, 2000);
 };
@@ -1201,7 +1201,7 @@ var makeFormation = function(frame) {
 		&& Math.abs(dstData[1] - dstData[2]) < 8)
 	{
 		frame.console.log("Formation. No Need!!!");		
-		frame.setTimeout(function() { readyForNext = true; }, 1000);
+		callForNextPlayer(frame);
 		return;
 	}
 
@@ -1248,7 +1248,7 @@ var makeFormation = function(frame) {
 										   + teamData.abilityEntity.politics2 + ", "
 										   + teamData.abilityEntity.politics3 + "]");
 		teamData.tapOkButton();
-		frame.setTimeout(function() { readyForNext = true; }, 1000);
+		callForNextPlayer(frame);
 	}, index * 2000);
 };
 
@@ -1265,7 +1265,13 @@ var autoLogin = function(frame, nextLogin)
 	frame.document.getElementById("login").submit();
 };
 
-var autoPlay = function(nextLogin, fn) {
+var callForNextPlayer = function(frame, timeout) {
+	frame.setTimeout(function() {
+		readyForNext = true;
+	}, timeout ? timeout : 1000);
+};
+
+var autoPlay = function(nextLogin, fn, playerCB) {
 	var logArea = document.getElementById("logContent");
 	if (logArea)
 		logArea.remove();
@@ -1311,10 +1317,12 @@ var autoPlay = function(nextLogin, fn) {
 	if (nextLogin && nextLogin > 0)
 	{
 		window.setTimeout(function() {
-			++playerIndex;
-			if (playerIndex == playerList.length)
-				playerIndex = 0;
-			autoPlay(nextLogin, fn);
+			if (playerCB)
+				playerCB();
+			// ++playerIndex;
+			// if (playerIndex == playerList.length)
+			// 	playerIndex = 0;
+			autoPlay(nextLogin, fn, playerCB);
 		}, nextLogin);
 	}
 };
@@ -1334,7 +1342,7 @@ var advancePlayerBy = function(step)
 }
 
 var startInterval = 0;
-var doStartInterval = function(fn, cb) {
+var doStartInterval = function(fn, cb, config) {
 	if (!playerList || playerList.length == 0)
 	{
 		initPlayerList();
@@ -1345,13 +1353,15 @@ var doStartInterval = function(fn, cb) {
 
 	var forceNext = 0;
 	var doPlay = function() {
-		window.clearTimeout(forceNext);
-		forceNext = window.setTimeout(function() {
-			window.console.log("Force Next.");
-			doPlay();
-		}, timeDelay * 1000);
+		if (!config || !config.noTimeout) {
+			window.clearTimeout(forceNext);
+			forceNext = window.setTimeout(function() {
+				window.console.log("Force Next.");
+				doPlay();
+			}, timeDelay * 1000);			
+		}
 
-		autoPlay(0, fn);
+		autoPlay(0, fn, cb);
 	};
 
 	if (startInterval) {
@@ -1422,7 +1432,22 @@ var doGacha = function(frame, config) {
 	}
 
 	gacha.gachaType = config.type;
-	gacha.gachaReListup();
+	if (config.weekly) {
+		var date = new Date();
+		var today = sprintf("%d%02d%02d", date.getFullYear(), date.getMonth() + 1, date.getDate());
+		var agent = gacha.walletData.tickets["AGENT_"+today];
+		if (agent.count == 0) {
+			frame.console.log("Gacha. Weekly. No more ticket!");
+			callForNextPlayer(frame);
+			return;
+		}
+
+		gacha.gachaType = 8
+		gacha.gotoPageListUp();
+	}
+	else {
+		gacha.gachaReListup();
+	}
 
 	var checkGachaResult = function() {
 		frame.console.log("Checking gacha result...");
@@ -1477,6 +1502,14 @@ var noDropCard = function(card)
 
 	return card.bean.generalCardId == 10376 // Name: 柳生宗矩2
 		|| card.bean.generalCardId == 10382 // Name: 朝比奈泰能3
+		|| card.bean.generalCardId == 10327 // Name: 伊達政宗3
+		|| card.bean.generalCardId == 10306 // Name: 織田信長3
+		|| card.bean.generalCardId == 10488 // Name: 伊達政宗3
+		|| card.bean.generalCardId == 10171 // Name: 武田信玄3
+		|| card.bean.generalCardId == 10318 // Name: 北条氏康3
+		|| card.bean.generalCardId == 10325 // Name: 島津義弘3
+		|| card.bean.generalCardId == 10305 // Name: 真田幸村3
+		|| card.bean.generalCardId == 10343 // Name: 松永久秀3
 	;
 }
 //		|| card.bean.generalCardId == 
@@ -1612,6 +1645,18 @@ var isReplacable = function(card)
 
 }
 
+var isNormalGacha = function(type) {
+	return type == 0;
+};
+
+var isMoneyGacha = function(type) {
+	return type == 2;
+};
+
+var isWeeklyGacha = function(type) {
+	return type == 8;
+};
+
 var collectGacha = function(frame, config)
 {
 	var count = 0;
@@ -1619,17 +1664,18 @@ var collectGacha = function(frame, config)
 	var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 	for (var i = 0; i < gacha.listupData.entity.generalCardList.length; i++) {
 		var c = gacha.listupData.entity.generalCardList[i];
+		frame.console.log("Gacha. CardId: "+c.bean.generalCardId+" // Name: "+c.bean.cardName+((c.bean.cardRank|0)+1));
 
 		// 4星卡, 直接停掉
 		if (c.bean.cardRank > 2)
 			return;
 
-		frame.console.log("Gacha. CardId: "+c.bean.generalCardId+" // Name: "+c.bean.cardName);
-		if ((config.type == 0 && !isCrappyCard(c)
-				&& (isSpecialCard(c)
-					|| (c.bean.cardRank == 1 && (isSuperbBronze(c) || isLowendPolitics(c)))
-					|| (c.bean.cardRank == 2 && !isLowendSilver(c))))
-			|| (config.type == 2 && c.bean.cardRank >= 3))
+		if (!isCrappyCard(c)
+			&& (isSpecialCard(c)
+				|| (c.bean.cardRank == 1 && (isSuperbBronze(c) || isLowendPolitics(c)))
+				|| (c.bean.cardRank == 2 && !isLowendSilver(c))
+				)
+			)
 		{
 			card = c;
 			card.gachaListIndex = i;
@@ -1637,151 +1683,157 @@ var collectGacha = function(frame, config)
 		}
 	};
 
+	frame.console.log("Gacha. Good card count: "+count);
+
+	var gotoNextStep = function() {
+		if (isWeeklyGacha(config.type)) {
+			if (config.autoNextPlayer) {
+				callForNextPlayer(frame);
+			}
+		}
+		else {
+			frame.setTimeout(function () {
+				prepareGacha(frame, config);
+			}, 2000);					
+		}		
+	};
+
 	if (count == 0) {
-		frame.setTimeout(function () {
-			prepareGacha(frame, config);
-		}, 2000);
+		gotoNextStep();
 	}
-	else if (config.safeCollect && config.type == 0 && count == 1) {
-		if (isSpecialCard(card)
-			|| (card.bean.cardRank == 1 && (isSuperbBronze(card) || isLowendPolitics(card)))
-			|| (card.bean.cardRank == 2 && !isLowendSilver(card)))
-		{
-			var filterCards = function(list, result, fn) {
-				for (var i = 0; i < list.length; i++) {
-					var card2 = list[i];
-					if (fn(card2, i)) {
-						card2.replaceIndex = i;
-						result.push(card2);
+	else if (config.safeCollect && (isNormalGacha(config.type) || isWeeklyGacha(config.type)) && count == 1) {
+		var filterCards = function(list, result, fn) {
+			for (var i = 0; i < list.length; i++) {
+				var card2 = list[i];
+				if (fn(card2, i)) {
+					card2.replaceIndex = i;
+					result.push(card2);
+				}
+			}
+		};
+
+		gacha.gotoPageDischarge(card.gachaListIndex);
+		var checkDiscardData = function() {
+			if (!gacha.dischargeData) {
+				frame.setTimeout(checkDiscardData, 1000);
+				return;
+			}
+
+			var candidates = [];
+			var discardList = gacha.getDischargeCardList();
+
+			var politicsThreshold = 200; var politics = []; var politicsCandidates = []; var politicsCandidatesVal = [];
+			var expiringPoliticsCount = 0;
+			var expiredPoliticsCount = 0;
+			for (var i = 0; i < discardList.length; i++) {
+				var card2 = discardList[i];
+				card2.seasonData = card2.generalCard.bean.peaks.split(',');
+				if (i > 6) {
+					var season = card2.playerGeneralCard.bean.season;
+					var values = card2.generalCard.bean.politicses.split(',');
+					if (i < 10) {
+						politics[i - 7] = values[season]|0;
+						if (card2.seasonData[season] == 2)
+							++expiredPoliticsCount;
+						else if (season < 9 && card2.seasonData[season + 1] == 2)
+							++expiringPoliticsCount;
+						else if (politics[i - 7] < politicsThreshold)
+							politicsThreshold = politics[i - 7];					
+					}
+					else {
+						++season; if (season >= 10) season = 0;
+						var val = values[season]|0;
+						if (isPoliticsCard(card2.generalCard) && (card2.generalCard.bean.cost * 5.5) < val) {
+							card2.politicsVal = val;
+							card2.replaceIndex = i;
+							politicsCandidates.push(card2);
+							politicsCandidatesVal.push(val);
+						}
 					}
 				}
+			}
+
+			bubbleSort(politicsCandidatesVal);
+			var politicsToReplaceCount = expiringPoliticsCount + expiredPoliticsCount;
+			var requiredPoliticsCount = Math.min(politicsToReplaceCount + 1, 3);
+			politicsThreshold = (politicsCandidates.length < requiredPoliticsCount) ? politicsThreshold : politicsCandidatesVal[politicsCandidates.length-requiredPoliticsCount];
+			frame.console.log("Current Politics:"+politics);
+			frame.console.log("Current Candidate Count:"+politicsCandidatesVal.length);
+			frame.console.log("Current Candidates:"+politicsCandidatesVal);
+			frame.console.log("Require Candidate Count:"+requiredPoliticsCount);
+			frame.console.log("Politics Threshold:"+politicsThreshold);
+
+			for (var i = 0; i < politicsCandidates.length; i++) {
+				if (politicsCandidates[i].politicsVal < politicsThreshold && isAutoReplacablePolitics(politicsCandidates[i].generalCard))
+					candidates.push(politicsCandidates[i]);
 			};
 
-			gacha.gotoPageDischarge(card.gachaListIndex);
-			var checkDiscardData = function() {
-				if (!gacha.dischargeData) {
-					frame.setTimeout(checkDiscardData, 1000);
-					return;
-				}
-
-				var candidates = [];
-				var discardList = gacha.getDischargeCardList();
-
-				var politicsThreshold = 200; var politics = []; var politicsCandidates = []; var politicsCandidatesVal = [];
-				var expiringPoliticsCount = 0;
-				var expiredPoliticsCount = 0;
-				for (var i = 0; i < discardList.length; i++) {
-					var card2 = discardList[i];
-					card2.seasonData = card2.generalCard.bean.peaks.split(',');
-					if (i > 6) {
-						var season = card2.playerGeneralCard.bean.season;
-						var values = card2.generalCard.bean.politicses.split(',');
-						if (i < 10) {
-							politics[i - 7] = values[season]|0;
-							if (card2.seasonData[season] == 2)
-								++expiredPoliticsCount;
-							else if (season < 9 && card2.seasonData[season + 1] == 2)
-								++expiringPoliticsCount;
-							else if (politics[i - 7] < politicsThreshold)
-								politicsThreshold = politics[i - 7];					
-						}
-						else {
-							++season; if (season >= 10) season = 0;
-							var val = values[season]|0;
-							if (isAutoReplacablePolitics(card2.generalCard) && (card2.generalCard.bean.cost * 5.5) < val) {
-								card2.politicsVal = val;
-								card2.replaceIndex = i;
-								politicsCandidates.push(card2);
-								politicsCandidatesVal.push(val);
-							}
-						}
-					}
-				}
-
-				bubbleSort(politicsCandidatesVal);
-				var politicsToReplaceCount = expiringPoliticsCount + expiredPoliticsCount;
-				var requiredPoliticsCount = Math.min(politicsToReplaceCount + 1, 3);
-				politicsThreshold = (politicsCandidates.length < requiredPoliticsCount) ? politicsThreshold : politicsCandidatesVal[politicsCandidates.length-requiredPoliticsCount];
-				frame.console.log("Current Politics:"+politics);
-				frame.console.log("Current Candidate Count:"+politicsCandidatesVal.length);
-				frame.console.log("Current Candidates:"+politicsCandidatesVal);
-				frame.console.log("Require Candidate Count:"+requiredPoliticsCount);
-				frame.console.log("Politics Threshold:"+politicsThreshold);
-
-				for (var i = 0; i < politicsCandidates.length; i++) {
-					if (politicsCandidates[i].politicsVal < politicsThreshold && isAutoReplacablePolitics(politicsCandidates[i].generalCard))
-						candidates.push(politicsCandidates[i]);
-				};
-
-				filterCards(discardList, candidates, function(card2, index) {
-					return isCrappyCard(card2.generalCard) && index < 10;
-				});
-				filterCards(discardList, candidates, function(card2, index) {
-					var season = card2.playerGeneralCard.bean.season;
-					return (season < 10 && card2.seasonData[season] == "2" && !noDropCard(card2.generalCard));
-				});
-				filterCards(discardList, candidates, function(card2, index) {
-					return isCrappyCard(card2.generalCard) && index > 9;
-				});
-				filterCards(discardList, candidates, function(card2, index) {
-					var season = card2.playerGeneralCard.bean.season + 1;
-					return (season < 10 && card2.seasonData[season] == "2" && index > 9 && !noDropCard(card2.generalCard));
-				});
-				filterCards(discardList, candidates, function(card2, index) {
-					return (card2.generalCard.bean.cardRank == 1
-							&& !isSuperbBronze(card2.generalCard)
-							&& !isLowendPolitics(card2.generalCard)
-							&& index > 9);
-				});
+			filterCards(discardList, candidates, function(card2, index) {
+				return isCrappyCard(card2.generalCard) && index < 10;
+			});
+			filterCards(discardList, candidates, function(card2, index) {
+				var season = card2.playerGeneralCard.bean.season;
+				return (season < 10 && card2.seasonData[season] == "2" && !noDropCard(card2.generalCard));
+			});
+			filterCards(discardList, candidates, function(card2, index) {
+				return isCrappyCard(card2.generalCard) && index > 9;
+			});
+			filterCards(discardList, candidates, function(card2, index) {
+				var season = card2.playerGeneralCard.bean.season + 1;
+				return (season < 10 && card2.seasonData[season] == "2" && index > 9 && !noDropCard(card2.generalCard));
+			});
+			filterCards(discardList, candidates, function(card2, index) {
+				return (card2.generalCard.bean.cardRank == 1
+						&& !isSuperbBronze(card2.generalCard)
+						&& !isLowendPolitics(card2.generalCard)
+						&& index > 9);
+			});
 
 
-				if (candidates.length == 0)
-					return;
+			if (candidates.length == 0)
+				return;
 
-				for (var i = 0; i < candidates.length; i++) {
+			for (var i = 0; i < candidates.length; i++) {
+				var item = candidates[i];
+				frame.console.log("Candidate: "+item.generalCard.bean.cardName
+											   +((item.generalCard.bean.cardRank|0)+1)
+											   +"."+((item.playerGeneralCard.bean.season|0)+1)+"期"
+											   +".Index:"+item.replaceIndex
+								 );
+			};
+
+			if ((card.bean.cardRank == 1 && isSuperbBronze(card))
+				|| (card.bean.cardRank == 1 && politicsThreshold < 75 && isLowendPolitics(card))
+				|| (card.bean.cardRank == 2 && !isLowendSilver(card)))
+			{
+				frame.console.log(frame.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
+				gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
+				gacha.gotoPageResult();
+			}
+
+			var elem = window.document.getElementById("gacha");
+			if (elem)
+			{
+				var gachaArea = document.getElementById("gachaContent");
+				if (gachaArea)
+					gachaArea.remove();
+				gachaArea = document.createElement('div');
+				gachaArea.id = "gachaContent";
+				elem.appendChild(gachaArea);
+				gachaArea = document.getElementById("gachaContent");
+
+				for (var i = 1; i < candidates.length; i++) {
 					var item = candidates[i];
-					frame.console.log("Candidate: "+item.generalCard.bean.cardName
-												   +((item.generalCard.bean.cardRank|0)+1)
-												   +"."+((item.playerGeneralCard.bean.season|0)+1)+"期"
-												   +".Index:"+item.replaceIndex
-									 );
-				};
+					var str = item.generalCard.bean.cardName
+							  +((item.generalCard.bean.cardRank|0)+1)
+							  +"."+((item.playerGeneralCard.bean.season|0)+1)+"期"
+							  +".Index:"+item.replaceIndex;
+					appendLog(str, gachaArea);
+				};					
+			}
 
-				if ((card.bean.cardRank == 1 && isSuperbBronze(card))
-					|| (card.bean.cardRank == 1 && politicsThreshold < 75 && isLowendPolitics(card))
-					|| (card.bean.cardRank == 2 && !isLowendSilver(card)))
-				{
-					frame.console.log("Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
-					gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
-					gacha.gotoPageResult();
-				}
-
-				var elem = window.document.getElementById("gacha");
-				if (elem)
-				{
-					var gachaArea = document.getElementById("gachaContent");
-					if (gachaArea)
-						gachaArea.remove();
-					gachaArea = document.createElement('div');
-					gachaArea.id = "gachaContent";
-					elem.appendChild(gachaArea);
-					gachaArea = document.getElementById("gachaContent");
-
-					for (var i = 1; i < candidates.length; i++) {
-						var item = candidates[i];
-						var str = item.generalCard.bean.cardName
-								  +((item.generalCard.bean.cardRank|0)+1)
-								  +"."+((item.playerGeneralCard.bean.season|0)+1)+"期"
-								  +".Index:"+item.replaceIndex;
-						appendLog(str, gachaArea);
-					};					
-				}
-
-				frame.setTimeout(function () {
-					prepareGacha(frame, config);
-				}, 2000);
-			}; frame.setTimeout(checkDiscardData, 1000);
-		}
+			gotoNextStep();
+		}; frame.setTimeout(checkDiscardData, 1000);
 	}
 	else if (config.autoCollect && count == 1) {
 		for (var i = 0; i < gacha.listupData.entity.generalCardList.length; i++) {
@@ -2121,7 +2173,7 @@ var doGetInvitatoinInfo = function(frame) {
 		}
 
 		frame.console.log(frame.playerTag+";邀请完成:"+invitation.inviteCount+";URL:"+invitation.inviteUrl);
-		frame.setTimeout(function() { readyForNext = true; }, 1000);
+		callForNextPlayer(frame);
 	}
 
 	frame.location.href = "http://mn.mobcast.jp/mn/#/invite/invite?"+Math.random();
@@ -2132,3 +2184,17 @@ var getInvitatoinInfo = function()
 {
 	doStartInterval(doGetInvitatoinInfo, function(){advancePlayerBy(1)});
 }
+
+var startWeeklyGacha = function()
+{
+	var elem = document.getElementById("playerIndex");
+	elem.value = (elem.value|0) + 1;
+
+	doStartInterval(function() {
+		startGacha({'type':8,'weekly':true,'safeCollect':true,'autoNextPlayer':true});
+	}, function(){advancePlayerBy(1)}, {'noTimeout':true});
+}
+
+
+window.realAlert = window.alert;
+window.alert =  function(msg) { window.console.log("Redirect alert. "+msg); };
