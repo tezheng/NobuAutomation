@@ -251,10 +251,8 @@ var tryFancyGacha = function(frame) {
 					window.clearTimeout(window.forceRetryNewAccount);
 					return;
 				}
-				else {
-					frame.tutorialDone = true;
-				}
 			};
+			frame.tutorialDone = true;
 		}; frame.setTimeout(checkGachaResult, 2000);	
 	}; frame.setTimeout(checkGacha, 1000);
 };
@@ -273,7 +271,7 @@ var autoTutorialBase = function(frame, config)
                 return;
             }
 
-            leader.selectIndex=1;
+            leader.selectIndex = (config && config.leader) ? config.leader : 1;
             leader.click_popupOk();
             frame.setTimeout(frame.autoTutorial, 2000);
         }
@@ -295,7 +293,7 @@ var autoTutorialBase = function(frame, config)
         if (frame.rootScope.tutorial.currentItemIndex == 1)
         {
             /*states.gotoPageStates('oshu');*/
-            states.gotoPageCountry(1);/*大阪37,尾张27,1-60*/
+            states.gotoPageCountry((config && config.city) ? config.city : 1);/*大阪37,尾张27,1-60*/
             states.click_gotoNextMessage();
             frame.setTimeout(frame.autoTutorial, 1000);
         }
@@ -1564,6 +1562,9 @@ var isUsableBronze = function(card) {
 };
 
 var isSuperbBronze = function(card) {
+	if (card.bean.cardRank != 1)
+		return false;
+
 	return isHighPolitics(card) || isMediumPolitics(card)
 		|| card.bean.generalCardId == 10209 // Name: 前田利家2
 		|| card.bean.generalCardId == 10265 // Name: 山本晴幸2
@@ -1592,12 +1593,21 @@ var isGoodBronze = function(card) {
 	;	
 };
 
-var isLowendSilver = function(card) {
+var isUsableSilver = function(card) {
+	if (card.bean.cardRank != 2)
+		return false;
+	return !isCrappySilver(card);
+};
+
+var isCrappySilver = function(card) {
+	if (card.bean.cardRank != 2)
+		return false;
 	return false
 		|| card.bean.generalCardId == 10101 // Name: 柿崎景家3
 		|| card.bean.generalCardId == 10050 // Name: 北畠具教3
 		|| card.bean.generalCardId == 10060 // Name: 東郷重位3
 		|| card.bean.generalCardId == 10251 // Name: 三好義賢3
+		|| card.bean.generalCardId == 10348 // Name: 甲斐宗運3 
 	;
 }
 var isLowendBronze = function(card) {
@@ -1713,11 +1723,16 @@ var collectGacha = function(frame, config)
 		if (c.bean.cardRank > 2)
 			return;
 
-		if (!isCrappyCard(c)
-			&& (isSpecialCard(c)
-				|| (c.bean.cardRank == 1 && (isSuperbBronze(c) || isLowendPolitics(c)))
-				|| (c.bean.cardRank == 2 && !isLowendSilver(c))
-				)
+		if (config.type == 2)
+			continue;
+
+		if (!isCrappyCard(c))
+			continue;
+
+		if (isSpecialCard(c)
+			|| (c.bean.cardRank == 1 && (config && config.safeCollect && (isSuperbBronze(c) || isLowendPolitics(c))))
+			|| (c.bean.cardRank == 1 && !(config && config.safeCollect))
+			|| (c.bean.cardRank == 2 && !isCrappySilver(c))
 			)
 		{
 			card = c;
@@ -1812,14 +1827,14 @@ var collectGacha = function(frame, config)
 			};
 
 			filterCards(discardList, candidates, function(card2, index) {
-				return isCrappyCard(card2.generalCard) && index < 10;
+				return isCrappyCard(card2.generalCard) && index > 9;
 			});
 			filterCards(discardList, candidates, function(card2, index) {
 				var season = card2.playerGeneralCard.bean.season;
 				return (season < 10 && card2.seasonData[season] == "2" && !noDropCard(card2.generalCard));
 			});
 			filterCards(discardList, candidates, function(card2, index) {
-				return isCrappyCard(card2.generalCard) && index > 9;
+				return isCrappyCard(card2.generalCard) && index < 10;
 			});
 			filterCards(discardList, candidates, function(card2, index) {
 				var season = card2.playerGeneralCard.bean.season + 1;
@@ -1866,9 +1881,10 @@ var collectGacha = function(frame, config)
 								 );
 			};
 
-			if ((card.bean.cardRank == 1 && isSuperbBronze(card))
-				|| (card.bean.cardRank == 1 && politicsThreshold < 75 && isLowendPolitics(card))
-				|| (card.bean.cardRank == 2 && !isLowendSilver(card)))
+			if (isSpecialCard(card)
+				|| isSuperbBronze(card)
+				|| (isPoliticsCard(card) && card.politicsVal > politicsThreshold)
+				|| (card.bean.cardRank == 2 && !isCrappySilver(card)))
 			{
 				frame.console.log(frame.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
 				gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
@@ -2195,7 +2211,6 @@ var newAccountLoop = function(config)
 		// }
 
 		if (frame.tutorialDone) {
-			frame.tutorialDone = false;
 			window.clearTimeout(window.forceRetryNewAccount);
 			window.forceRetryNewAccount = window.setTimeout(function() { doCreateAccount(config); }, 60000);
 			window.setTimeout(function() { doCreateAccount(config); }, 3000);

@@ -13,21 +13,22 @@
 		<span>URL: </span><span><input id = "newUserURL" value="" style="width:300px"></span>
 	</div>
 	<div>
-	<span>Leader: 
-		<select selected="织田信长">
-			<option value="1">织田信长</option>
-			<option value="0">武田信玄</option>
-			<option value="2">毛利元就</option>
+		<span>Leader: 
+			<select id='leader'>
+				<option value="0">武田信玄</option>
+				<option value="1">织田信长</option>
+				<option value="2">毛利元就</option>
+			</select>
+		</span>
+		<span>City: 
+		<select id='city'>
+			<option value="0">虾夷</option>
+			<option value="37">大阪</option>
 		</select>
-	</span>
-	<span>City: 
-	<select selected="1">
-		<option value="0">虾夷</option>
-		<option value="1">织田信长</option>
-		<option value="2">毛利元就</option>
-	</select>
-	</span>
-		<span><button type = "button" onclick = "javascript:(newAccount({'fancyGacha':true}))">Start</button></span>
+		</span>
+		<span>
+			<button type = "button" onclick = "javascript:(newAccount({'fancyGacha':true}))">Start</button>
+		</span>
 	</div>
 	<h3>Functions</h3>
 	<div>
