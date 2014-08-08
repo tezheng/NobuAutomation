@@ -277,7 +277,7 @@ var autoTutorialBase = function(frame, config)
                 return;
             }
 
-            leader.selectIndex = (config && config.leader) ? config.leader : 1;
+            leader.selectIndex = (config && (typeof config.leader != "undefined")) ? config.leader : 1;
             leader.click_popupOk();
             frame.setTimeout(frame.autoTutorial, 2000);
         }
@@ -299,7 +299,7 @@ var autoTutorialBase = function(frame, config)
         if (frame.rootScope.tutorial.currentItemIndex == 1)
         {
             /*states.gotoPageStates('oshu');*/
-            states.gotoPageCountry((config && config.city) ? config.city : 1);/*大阪37,尾张27,1-60*/
+            states.gotoPageCountry((config && (typeof config.city != "undefined")) ? config.city : 1);/*大阪37,尾张27,1-60*/
             states.click_gotoNextMessage();
             frame.setTimeout(frame.autoTutorial, 1000);
         }
@@ -2132,6 +2132,14 @@ var newAccount = function(config) {
 	var timeRatio = document.getElementById("timeRatio").value;
 	var newUserURL = document.getElementById("newUserURL").value;
 	var count = document.getElementById("count").value;
+	var city = document.getElementById("city").value;
+	var leader = document.getElementById("leader").value;
+
+	if (!config)
+		config = [];
+	config.city = city;
+	config.leader = leader;
+
 	var game = createGame(newUserURL);
 
 	var autoRun = function() {
@@ -2326,7 +2334,7 @@ var newAccountLoop = function(config)
 		document.querySelector("#count").value = count;
 
 		removeAll();
-		window.setTimeout(function() { newAccount(config); }, 1000);
+		window.setTimeout(function() { newAccount(config); }, 2000);
 		window.setTimeout(checkStatus, 3000);
 	};
 
