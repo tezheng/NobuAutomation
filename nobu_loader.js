@@ -42,7 +42,7 @@ var endPlayer = 0;
 var playerList = [];
 var password = "tzh20080426";
 var playerCount = 18;
-var playerCountYahoo = 123;
+var playerCountYahoo = 130;
 
 var getTodayString = function() {
 	var date = new Date();
@@ -672,12 +672,26 @@ var getSeriesData = function(frame, log) {
 
 		// if (series.seriesList.length == 0 && series.day > 0) {
 		// if (series.day != 1) {
-		if (series.seriesList.length != 5 && series.day > 0) {
+		var goBackOneDay = function ()
+		{
 			var days = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.previousDay != "undefined"; });
 			days.previousDay();
 			days.$apply();
-			frame.setTimeout(getData, 2000);
-			return;
+			frame.setTimeout(getData, 3000);			
+		};
+
+		if (series.day > 0) {
+			if (series.seriesList.length != 5) {
+				goBackOneDay();
+				return;
+			}
+
+			for (var i = 0; i < series.seriesList.length; i++) {
+				if (!series.seriesList[i].finished) {
+					goBackOneDay();
+					return;
+				}
+			}
 		}
 
 		for (var i = 0; i < series.seriesList.length; i++) {
@@ -870,9 +884,9 @@ var getPoliticsData = function(frame, log) {
 			frame.playerInfo.topOnBench = [];
 			frame.playerInfo.goldOn = [];
 			frame.playerInfo.goldOff = [];
+			frame.playerInfo.cur = [];
 			frame.playerInfo.cur.politics = [];
 			frame.playerInfo.cur.politics.name = "内政即将过期";
-			frame.playerInfo.cur = [];
 			frame.playerInfo.cur.duty = [];
 			frame.playerInfo.cur.bench = [];
 			frame.playerInfo.nxt = [];
@@ -887,13 +901,13 @@ var getPoliticsData = function(frame, log) {
 			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
 			if (card.playerGeneralSeasonRecord && card.playerGeneralSeasonRecord.bean.totalAttackDamage)
 			{
-				var bean = card.playerGeneralSeasonRecord.bean;
+				var cost = card.generalCard.bean.cost;
 				var rank = (card.generalCard.bean.cardRank|0)+1;
 				var season = (card.playerGeneralCard.bean.season|0)+ 1;
-				var cost = card.playerGeneralCard.bean.cost;
+				var bean = card.playerGeneralSeasonRecord.bean;
 				var record = sep + card.generalCard.bean.cardName +rank+";"+rank+";消耗;"+cost+";"
 								 + teamData.positionArray.list[i]+";"+season+"期"
-								 + ";位置;" + ((i|0)+1)
+								 + ";阵型:" + teamData.formationData.bean.formationName + ";位置:" + ((i|0)+1)
 								 + ";参战;" + bean.games + ";均伤;" + ((bean.totalAttackDamage/bean.games)>>0)
 								 + ";击败;" + bean.totalKnockDown + ";溃退;" + bean.totalDead
 								 + ";攻击;" + bean.totalAttack + ";暴击;" + bean.totalAttackCritical + ";特技;" + bean.totalSkill
@@ -941,10 +955,10 @@ var getPoliticsData = function(frame, log) {
 			}
 
 			if (i > 9) {
-				var season = card.playerGeneralCard.bean.season + 1;
+				var season = card.playerGeneralCard.bean.season;
 				var politicses = card.generalCard.bean.politicses.split(',');
-				if ((isHighPolitics(card.generalCard) || isMediumPolitics(card.generalCard)) && politicses[season] > politics[0]) {
-					recordCard(card, season, frame.playerInfo.nxt.politics);
+				if ((isHighPolitics(card.generalCard) || isMediumPolitics(card.generalCard)) && politicses[season+1] > politics[0]) {
+					recordCard(card, season+1, frame.playerInfo.nxt.politics);
 				}
 
 				if ((shouldAlwaysOn(card.generalCard) || isTopClassCard(card.generalCard)) && (season >= 9 || seasonData[season] != "2"))
