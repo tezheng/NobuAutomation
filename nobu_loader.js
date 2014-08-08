@@ -32,6 +32,52 @@ autoYahooEmail();
 var loginURL = "http://user.mobcast.jp/login?guid=ON&return_to=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&sc=on";
 var newUserURL = "http://gmpa.jp/regist.php?gmpa=on&input=1&back_url=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&gid=23&sid=0";
 
+var rootURL = "http://mn.mobcast.jp/mn/";
+var searchStr = "?v=20140808.00.00#/";
+
+var getRootURL = function() {
+	return rootURL + searchStr;
+}
+var getGachaURL = function() {
+	return getRootURL() + "gacha/top?" + Math.random();
+};
+
+var getRecoverURL = function() {
+	return getRootURL() + "shop/recover?" + Math.random();
+};
+
+var getExpeditionURL = function() {
+	return getRootURL() + "expedition?" + Math.random();
+};
+
+var getWarMatchURL = function() {
+	return getRootURL() + "war/match?" + Math.random();
+};
+
+var getInvitationURL = function() {
+	return getRootURL() + "invite/invite?" + Math.random();
+};
+
+var getOrganizeURL = function() {
+	return getRootURL() + "organize/general";
+};
+
+var getTeamDataURL = function() {
+	return getRootURL() + "team_data?userID=";
+};
+
+var getWarRankingURL = function() {
+	return getRootURL() + "war/ranking";
+};
+
+var getShopFormationURL = function() {
+	return getRootURL() + "shop/formation";
+};
+
+var getConquestURL = function() {
+	return getRootURL() + "conquest/conquest";
+};
+
 var readyForNext = false;
 
 var timeRatio = 1;
@@ -112,13 +158,13 @@ var getFrame = function() {
 
 var getRootScope = function(frame, forceUpdate) {
 	var local = frame ? frame : getFrame();
-	if (!local || !local.angular || !local.angular.element || !frame.document.getElementsByTagName('body')[0])
+	if (!local || !local.angular || !local.angular.element || !local.document.getElementsByTagName('body')[0])
 		return null;
 
-	if (!frame.rootScope || forceUpdate)
-		frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
+	if (!local.rootScope || forceUpdate)
+		local.rootScope = local.angular.element(local.document.getElementsByTagName('body')[0]).scope();
 
-	return frame.rootScope;
+	return local.rootScope;
 }
 
 var findChildScope = function(scope, condition) {
@@ -224,13 +270,13 @@ var acquirePresents = function(frame, config) {
 };
 
 var tryFancyGacha = function(frame) {
-	frame.location = "http://mn.mobcast.jp/mn/#/gacha/top?"+Math.random();
+	frame.location = getGachaURL();
 	getRootScope(frame);
 
-	var checkGacha = function() {
+	var checkFancyGacha = function() {
 		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 		if (!gacha || !gacha.walletData) {
-			frame.setTimeout(checkGacha, 1000);
+			frame.setTimeout(checkFancyGacha, 1000);
 			return;
 		}
 
@@ -260,7 +306,7 @@ var tryFancyGacha = function(frame) {
 			};
 			frame.tutorialDone = true;
 		}; frame.setTimeout(checkGachaResult, 2000);	
-	}; frame.setTimeout(checkGacha, 1000);
+	}; frame.setTimeout(checkFancyGacha, 1000);
 };
 
 var autoTutorialBase = function(frame, config)
@@ -406,7 +452,7 @@ var checkChaki = function(frame) {
 var autoExpedition = function(frame)
 {
 	var recover = function() {
-		frame.location="http://mn.mobcast.jp/mn/#/shop/recover?"+Math.random();
+		frame.location = getRecoverURL();
 		var checkRecover = function() {
 			var recover = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.buyRecover != "undefined"; });
 			if (!recover) {
@@ -536,8 +582,8 @@ var autoExpedition = function(frame)
 	};
 
 	var locateExpedition = function() {
-		frame.location="http://mn.mobcast.jp/mn/#/expedition?"+Math.random();
 		frame.setTimeout(doLocateExpedition, 2000);
+		frame.location=getExpeditionURL();
 	};
 
 	var getChakiPoints = function() {
@@ -710,7 +756,7 @@ var getSeriesData = function(frame, log) {
 
 		getFormationData(frame, log);
 	}
-	frame.location = "http://mn.mobcast.jp/mn/#/war/match?"+Math.random();
+	frame.location = getWarMatchURL();
 	frame.setTimeout(getData, 2000);
 };
 
@@ -744,14 +790,13 @@ var getConquestInfo = function(frame, log)
 		callForNextPlayer(frame);
 	};
 
-	frame.location = "http://mn.mobcast.jp/mn/#/conquest/conquest";
+	frame.location = getConquestURL;
 	frame.setTimeout(checkConquest, 1000);
 };
 
 var leaderBonusRecord = {};
 var getPoliticsData = function(frame, log) {
-	var url = "http://mn.mobcast.jp/mn/#/organize/general";
-	frame.location = url;
+	frame.location = getOrganizeURL();
 
 	var checkPolitics = function() {
 		var teamData = findChildScope(frame.rootScope, function(childscope) {
@@ -981,7 +1026,7 @@ var getPoliticsData = function(frame, log) {
 
 		// logout
 		frame.logDone = true; frame.logtxt = log;
-		frame.location = "http://mn.mobcast.jp/mn/#";
+		frame.location = getRootURL();
 	}; frame.setTimeout(checkPolitics, 2000);
 };
 
@@ -1021,7 +1066,7 @@ var getFormationData = function(frame, log)
 		getPoliticsData(frame, log);
 	}
 
-	frame.location = "http://mn.mobcast.jp/mn/#/shop/formation";
+	frame.location = getShopFormationURL();
 	frame.setTimeout(checkFormation, 2000);
 };
 
@@ -1047,7 +1092,7 @@ var getRankingData = function(frame, log) {
 		}
 	}
 
-	frame.location = "http://mn.mobcast.jp/mn/#/war/ranking";
+	frame.location = getWarRankingURL();
 	frame.setTimeout(checkRanking, 2000);
 }
 
@@ -1173,7 +1218,7 @@ var politics = [-1, -1, -1];
 var findOpponent = function(frame) {
 	frame.console.log("Formation. " + playerList[playerIndex]);
 	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-	frame.location = "http://mn.mobcast.jp/mn/#/war/match?"+Math.random();
+	frame.location = getWarMatchURL();
 
 	var getOpponent = function() {
 		var series = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.seriesList != "undefined"; });
@@ -1195,7 +1240,7 @@ var findOpponent = function(frame) {
 			turn += 1;
 			frame.console.log("Formation. "+series.divName+". Day: "+day+", Turn: "+turn);
 
-			var url = "http://mn.mobcast.jp/mn/#/team_data?userID=" + item.vsPlayerId;
+			var url = getTeamDataURL() + item.vsPlayerId;
 			var openOpponentInfo = function() {
 				var teamData = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
 				if (!teamData) {
@@ -1228,7 +1273,7 @@ var getOpponentPolitics = function(frame) {
 };
 
 var gotoFormation = function(frame) {
-	var url = "http://mn.mobcast.jp/mn/#/organize/general";
+	var url = getOrganizeURL();
 	frame.location = url;
 
 	var checkFormation = function() {
@@ -2072,7 +2117,7 @@ var collectGacha = function(frame, config)
 };
 
 var prepareGacha = function(frame, config) {
-	frame.location = "http://mn.mobcast.jp/mn/#/gacha/top?"+Math.random();
+	frame.location = getGachaURL();
 	getRootScope(frame);
 	var checkGacha = function() {
 		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
@@ -2196,7 +2241,7 @@ var newAccount = function(config) {
 	var openGame = function() {
 		state = -1;
 		var frame = game.contentWindow;
-		frame.location = "http://mn.mobcast.jp/mn/#/";
+		frame.location = getRootURL();
 
 		autoRun();
 	};
@@ -2376,7 +2421,7 @@ var newAccountLoop = function(config)
 
 var openInvitePage = function() {
 	var frame = getFrame();
-	frame.location.href = "http://mn.mobcast.jp/mn/#/invite/invite?"+Math.random();
+	frame.location.href = getInvitationURL();
 };
 
 var doGetInvitatoinInfo = function(frame) {
@@ -2391,7 +2436,7 @@ var doGetInvitatoinInfo = function(frame) {
 		callForNextPlayer(frame);
 	}
 
-	frame.location.href = "http://mn.mobcast.jp/mn/#/invite/invite?"+Math.random();
+	frame.location.href = getInvitationURL();
 	frame.setTimeout(checkInvitation, 2000);
 };
 
