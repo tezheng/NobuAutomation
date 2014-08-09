@@ -255,28 +255,27 @@ var acquirePresents = function(frame, config) {
 		var checkPresents = function () {
 			var present = findChildScope(rootScope, function(childscope) { return typeof childscope.acquireAllPresents != "undefined"; });
 			if (!present) {
-				frame.setTimeout(checkPresents, 1000);
+				window.setTimeout(checkPresents, 1000);
 				return;
 			}
 
 			present.acquireAllPresents();
 	       	if (config && config.fancyGacha) {
-        		frame.setTimeout(function() {
+        		window.setTimeout(function() {
 					tryFancyGacha(frame);            			
         		}, 2000);
         	}
-		}; frame.setTimeout(checkPresents, 1000);
-	}; frame.setTimeout(getAll, 1000);
+		}; window.setTimeout(checkPresents, 1000);
+	}; window.setTimeout(getAll, 1000);
 };
 
 var tryFancyGacha = function(frame) {
 	frame.location = getGachaURL();
-	getRootScope(frame);
 
 	var checkFancyGacha = function() {
-		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+		var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 		if (!gacha || !gacha.walletData) {
-			frame.setTimeout(checkFancyGacha, 1000);
+			window.setTimeout(checkFancyGacha, 1000);
 			return;
 		}
 
@@ -288,9 +287,9 @@ var tryFancyGacha = function(frame) {
 
 		var checkGachaResult = function() {
 			frame.console.log("Checking gacha result...");
-			var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+			var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 			if (!gacha.listupData || !gacha.listupData.entity || !gacha.listupData.entity.generalCardList) {
-				frame.setTimeout(checkGachaResult, 2000);
+				window.setTimeout(checkGachaResult, 2000);
 				return;
 			}
 
@@ -304,69 +303,69 @@ var tryFancyGacha = function(frame) {
 					return;
 				}
 			};
-			frame.tutorialDone = true;
-		}; frame.setTimeout(checkGachaResult, 2000);	
-	}; frame.setTimeout(checkFancyGacha, 1000);
+			getFrame().tutorialDone = true;
+		}; window.setTimeout(checkGachaResult, 2000);	
+	}; window.setTimeout(checkFancyGacha, 1000);
 };
 
 var autoTutorialBase = function(frame, config)
 {
-    if (frame.rootScope.tutorial.currentPhaseIndex == 0)
+    if (getRootScope().tutorial.currentPhaseIndex == 0)
     {
-		var leader = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.click_popupOk != "undefined" });
+		var leader = findChildScope(getRootScope(), function (childscope) { return typeof childscope.click_popupOk != "undefined" });
 
-        if (frame.rootScope.tutorial.currentItemIndex == 10 && leader && leader.selectIndex < 0)
+        if (getRootScope().tutorial.currentItemIndex == 10 && leader && leader.selectIndex < 0)
         {
             if (!leader)
             {
-                frame.setTimeout(frame.autoTutorial, 500);
+                window.setTimeout(frame.autoTutorial, 500);
                 return;
             }
 
             leader.selectIndex = (config && (typeof config.leader != "undefined")) ? config.leader : 1;
             leader.click_popupOk();
-            frame.setTimeout(frame.autoTutorial, 2000);
+            window.setTimeout(frame.autoTutorial, 2000);
         }
-        else if (frame.rootScope.tutorial.currentItemIndex >= frame.lastItemIndex)
+        else if (getRootScope().tutorial.currentItemIndex >= frame.lastItemIndex)
         {
-        	frame.lastItemIndex = frame.rootScope.tutorial.currentItemIndex;
+        	frame.lastItemIndex = getRootScope().tutorial.currentItemIndex;
             frame.tutorial.click();
-            frame.setTimeout(frame.autoTutorial, 1000);
+            window.setTimeout(frame.autoTutorial, 1000);
         }
-        else //if (frame.rootScope.tutorial.currentItemIndex == 9)
+        else //if (getRootScope().tutorial.currentItemIndex == 9)
         {
             frame.tutorial.click();
-            frame.setTimeout(frame.autoTutorial, 3000);
+            window.setTimeout(frame.autoTutorial, 3000);
         }
     }
-    else if (frame.rootScope.tutorial.currentPhaseIndex == 7)
+    else if (getRootScope().tutorial.currentPhaseIndex == 7)
     {
-        var states = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.gotoPageCountry != "undefined" });
-        if (frame.rootScope.tutorial.currentItemIndex == 1)
+        var states = findChildScope(getRootScope(), function (childscope) { return typeof childscope.gotoPageCountry != "undefined" });
+        if (getRootScope().tutorial.currentItemIndex == 1)
         {
             /*states.gotoPageStates('oshu');*/
             states.gotoPageCountry((config && (typeof config.city != "undefined")) ? config.city : 1);/*大阪37,尾张27,1-60*/
             states.click_gotoNextMessage();
-            frame.setTimeout(frame.autoTutorial, 1000);
+            window.setTimeout(frame.autoTutorial, 1000);
         }
-        else if (frame.rootScope.tutorial.currentItemIndex == 4)
+        else if (getRootScope().tutorial.currentItemIndex == 4)
         {
             states.click_finish();
 
-            frame.setTimeout(function() {
+            window.setTimeout(function() {
             	acquirePresents(frame, config);
 
             	if (config && config.fancyGacha) {
 
             	}
 				else {
-					frame.tutorialDone = true;
+					getFrame().tutorialDone = true;
 				}
                 //window.location="http://mn.mobcast.jp/mn/#/invite/invite";
-                // frame.setTimeout(function() {
+                // window.setTimeout(function() {
                 //     $("input[name='codeInput']").value = "2xwy472";
-                //     frame.setTimeout(function() {
-                //         var invite = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.inputInviteCode != "undefined" });
+                //     window.setTimeout(function() {
+                //         var invite = findChildScope(getRootScope(), function (childscope) { return typeof childscope.inputInviteCode != "undefined" });
                 //         invite.inputInviteCode();
                 //     }, 1000);
                 // }, 3000);
@@ -374,25 +373,25 @@ var autoTutorialBase = function(frame, config)
         }
         else
         {
-            frame.setTimeout(frame.autoTutorial, 200);
+            window.setTimeout(frame.autoTutorial, 200);
             frame.tutorial.click();
         }
     }
-    else if (frame.rootScope.tutorial.currentPhaseIndex == 9)
+    else if (getRootScope().tutorial.currentPhaseIndex == 9)
     {
     	return;
     }
     else
     {
-        frame.setTimeout(frame.autoTutorial, 200);
+        window.setTimeout(frame.autoTutorial, 200);
         frame.tutorial.click();
     }
 };
 
 var checkChaki = function(frame) {
-	frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+	frame.chaki = findChildScope(getRootScope(), function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
 	if (frame.chaki == null) {
-		frame.setTimeout(checkChaki, 1000);
+		window.setTimeout(checkChaki, 1000);
 		return;
 	}
 
@@ -410,7 +409,7 @@ var checkChaki = function(frame) {
 	};
 
 	if (!validation) {
-		frame.setTimeout(checkChaki, 1000);
+		window.setTimeout(checkChaki, 1000);
 		return false;
 	}
 
@@ -454,21 +453,21 @@ var autoExpedition = function(frame)
 	var recover = function() {
 		frame.location = getRecoverURL();
 		var checkRecover = function() {
-			var recover = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.buyRecover != "undefined"; });
+			var recover = findChildScope(getRootScope(), function(childscope) { return typeof childscope.buyRecover != "undefined"; });
 			if (!recover) {
-				frame.setTimeout(checkRecover, 2000);
+				window.setTimeout(checkRecover, 2000);
 				return;
 			}
 
 			frame.console.log("远征. " + frame.player.myData.lordName + ". 当前远征饭: " + recover.recoverItem);
 			if (recover.recoverItem >= frame.recoverNeeded - 1) {
 				recover.buyRecover("item");
-				frame.setTimeout(getChakiPoints, 4000);				
+				window.setTimeout(getChakiPoints, 4000);				
 			}
 			else {
 				callForNextPlayer(frame);
 			}
-		}; frame.setTimeout(checkRecover, 2000);
+		}; window.setTimeout(checkRecover, 2000);
 	};
 
 	var doChallenge = function() {
@@ -527,7 +526,7 @@ var autoExpedition = function(frame)
 	};
 
 	var recordChallengeResult = function (index) {
-		var expedition = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.stamina != "undefined"; });
+		var expedition = findChildScope(getRootScope(), function(childscope) { return typeof childscope.stamina != "undefined"; });
 		if (!expedition)
 			return;
 
@@ -541,17 +540,17 @@ var autoExpedition = function(frame)
 	};
 
 	var startChallenge = function() {
-		frame.setTimeout(function() {
+		window.setTimeout(function() {
 	    	frame.expedition.listUp();
 		}, 1000);
-		frame.setTimeout(function () {
+		window.setTimeout(function () {
 			var result = doChallenge();
 			if (result["continue"]) {
 				// Arrange the next expedition
-				frame.setTimeout(locateExpedition, 2000);
+				window.setTimeout(locateExpedition, 2000);
 				var index = result["index"];
 				if (index > -1)
-					frame.setTimeout(function () {
+					window.setTimeout(function () {
 						recordChallengeResult(index);
 					}, 6000);
 			}
@@ -562,18 +561,18 @@ var autoExpedition = function(frame)
 	};
 
 	var doLocateExpedition = function() {
-	    frame.expedition = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.stamina != "undefined"; });
+	    frame.expedition = findChildScope(getRootScope(), function(childscope) { return typeof childscope.stamina != "undefined"; });
 	    if (frame.expedition == null) {
-			var movie = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.movieEnd != "undefined"; });
+			var movie = findChildScope(getRootScope(), function(childscope) { return typeof childscope.movieEnd != "undefined"; });
 			if (movie != null) {
 				frame.console.log("Find expedition movie!");
-				frame.setTimeout(function () {
+				window.setTimeout(function () {
 					movie.tap();
 				}, 7000);
-				frame.setTimeout(locateExpedition, 9000);
+				window.setTimeout(locateExpedition, 9000);
 			}
 			else {
-				frame.setTimeout(doLocateExpedition, 2000);
+				window.setTimeout(doLocateExpedition, 2000);
 			}
 	    }
 	    else {
@@ -582,48 +581,47 @@ var autoExpedition = function(frame)
 	};
 
 	var locateExpedition = function() {
-		frame.setTimeout(doLocateExpedition, 2000);
+		window.setTimeout(doLocateExpedition, 2000);
 		frame.location=getExpeditionURL();
 	};
 
 	var getChakiPoints = function() {
 		frame.location = "http://mn.mobcast.jp/mn/#/event/chaki/award";
-		frame.setTimeout(function() {
-			frame.chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+		window.setTimeout(function() {
+			frame.chaki = findChildScope(getRootScope(), function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
 			if (frame.chaki == null || !checkChaki(frame)) {
-				var movie = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.movieEnd != "undefined"; });
+				var movie = findChildScope(getRootScope(), function(childscope) { return typeof childscope.movieEnd != "undefined"; });
 				if (movie != null)
-					frame.setTimeout(locateExpedition, 1000);
+					window.setTimeout(locateExpedition, 1000);
 				else
-					frame.setTimeout(getChakiPoints, 1000);
+					window.setTimeout(getChakiPoints, 1000);
 				return;
 			}
 
-			frame.setTimeout(locateExpedition, 2000);
+			window.setTimeout(locateExpedition, 2000);
 		}, 3000);
 	};
 
-	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-	if (!frame.rootScope)
+	if (!getRootScope())
 		return;
 
 	var checkPlayer = function() {
-		frame.player = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.myData != "undefined"; });
+		frame.player = findChildScope(getRootScope(), function(childscope) { return typeof childscope.myData != "undefined"; });
 		if (!frame.player) {
 			frame.console.log("Checking player for expedition...");
-			frame.setTimeout(checkPlayer, 2000);
+			window.setTimeout(checkPlayer, 2000);
 			return;
 		}
 		else {
 			frame.console.log("远征. " + playerList[playerIndex]);
-			frame.setTimeout(locateExpedition, 3000);
+			window.setTimeout(locateExpedition, 3000);
 		}
-	}; frame.setTimeout(checkPlayer, 2000);
+	}; window.setTimeout(checkPlayer, 2000);
 };
 
 var collectChakiAward = function(frame) {
 	var collectChaki = function() {
-		var chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+		var chaki = findChildScope(getRootScope(), function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
 
 		for (var i = 0; i < chaki.teaSets.length; i++) {
 			if (chaki.teaSets[i] > 0 && chaki.friendlyPoints[i] < 500) {
@@ -644,7 +642,7 @@ var collectChakiAward = function(frame) {
 				chaki.currentIndex = i;
 				chaki.present(i, count);
 
-				frame.setTimeout(tryCheckChaki, 1000);
+				window.setTimeout(tryCheckChaki, 1000);
 				return;
 			}
 		};
@@ -666,7 +664,7 @@ var collectChakiAward = function(frame) {
 						chaki.currentIndex = 3;
 						chaki.present(i, count);
 
-						frame.setTimeout(tryCheckChaki, 1000);
+						window.setTimeout(tryCheckChaki, 1000);
 						return;
 					}
 				}
@@ -677,10 +675,10 @@ var collectChakiAward = function(frame) {
 
 	var tryCheckChaki = function() {
 		frame.location = "http://mn.mobcast.jp/mn/#/event/chaki/award";
-		frame.setTimeout(function() {
-			var chaki = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
+		window.setTimeout(function() {
+			var chaki = findChildScope(getRootScope(), function(childscope) { return typeof childscope.friendlyPoints != "undefined"; });
 			if (chaki == null || !checkChaki(frame)) {
-				frame.setTimeout(tryCheckChaki, 1000);
+				window.setTimeout(tryCheckChaki, 1000);
 				return;
 			}
 
@@ -689,30 +687,29 @@ var collectChakiAward = function(frame) {
 	};
 
 	var checkPlayer = function() {
-		frame.player = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.myData != "undefined"; });
+		frame.player = findChildScope(getRootScope(), function(childscope) { return typeof childscope.myData != "undefined"; });
 		if (!frame.player) {
 			frame.console.log("Checking player for expedition...");
-			frame.setTimeout(checkPlayer, 2000);
+			window.setTimeout(checkPlayer, 2000);
 			return;
 		}
 		else {
 			frame.console.log("远征. " + playerList[playerIndex]);
-			frame.setTimeout(tryCheckChaki, 1000);
+			window.setTimeout(tryCheckChaki, 1000);
 		}
 	};
 
-	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-	if (frame.rootScope)
-		frame.setTimeout(checkPlayer, 2000);
+	if (getRootScope())
+		window.setTimeout(checkPlayer, 2000);
 };
 
 var getSeriesData = function(frame, log) {
 	var resource = 0;
 	var results = [0, 0, 0];
 	var getData = function() {
-		var series = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.seriesList != "undefined"; });
+		var series = findChildScope(getRootScope(), function(childscope) { return typeof childscope.seriesList != "undefined"; });
 		if (!series) {
-			frame.setTimeout(getData, 2000);
+			window.setTimeout(getData, 2000);
 			return;
 		}
 
@@ -720,10 +717,10 @@ var getSeriesData = function(frame, log) {
 		// if (series.day != 1) {
 		var goBackOneDay = function ()
 		{
-			var days = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.previousDay != "undefined"; });
+			var days = findChildScope(getRootScope(), function(childscope) { return typeof childscope.previousDay != "undefined"; });
 			days.previousDay();
 			days.$apply();
-			frame.setTimeout(getData, 3000);			
+			window.setTimeout(getData, 3000);			
 		};
 
 		if (series.day > 0) {
@@ -757,7 +754,7 @@ var getSeriesData = function(frame, log) {
 		getFormationData(frame, log);
 	}
 	frame.location = getWarMatchURL();
-	frame.setTimeout(getData, 2000);
+	window.setTimeout(getData, 2000);
 };
 
 
@@ -767,7 +764,7 @@ var getConquestInfo = function(frame, log)
 		var conquest = findChildScope(getRootScope(frame), function(childscope) { return typeof childscope.gotoPageCountry!= "undefined"; });
 		if (!conquest || !conquest.apiResultData || !conquest.apiResultData.data) {
 			frame.console.log("Checking conquest...");
-			frame.setTimeout(checkConquest, 1000);
+			window.setTimeout(checkConquest, 1000);
 			return;
 		}
 
@@ -779,7 +776,7 @@ var getConquestInfo = function(frame, log)
 		for (var i = 0; i < cities.length; i++) {
 			resources += cities[i].resources;
 		};
-		str += ";余额:"+(((conquestData.regularResources - resources)/10000)>>0)+"石.当前:"+((conquestData.regularResources/10000)>>0)+"石.所需:"+((resources/10000)>>0)+"石.";
+		str += ";余额;"+(((conquestData.regularResources - resources)/10000)>>0)+";当前;"+((conquestData.regularResources/10000)>>0)+";所需:"+((resources/10000)>>0)+"万石.";
 		if (log) {
 			log += ";"+str;
 		}
@@ -790,8 +787,8 @@ var getConquestInfo = function(frame, log)
 		callForNextPlayer(frame);
 	};
 
-	frame.location = getConquestURL;
-	frame.setTimeout(checkConquest, 1000);
+	frame.location = getConquestURL();
+	window.setTimeout(checkConquest, 1000);
 };
 
 var leaderBonusRecord = {};
@@ -799,14 +796,14 @@ var getPoliticsData = function(frame, log) {
 	frame.location = getOrganizeURL();
 
 	var checkPolitics = function() {
-		var teamData = findChildScope(frame.rootScope, function(childscope) {
+		var teamData = findChildScope(getRootScope(), function(childscope) {
 			return typeof childscope.tapOkButton != "undefined" &&
 				   typeof childscope.generalTap != "undefined" &&
 				   typeof childscope.abilityEntity != "undefined";
 		});
 
 		if (!teamData) {
-			frame.setTimeout(checkPolitics, 2000);
+			window.setTimeout(checkPolitics, 2000);
 			return;
 		}
 
@@ -848,7 +845,7 @@ var getPoliticsData = function(frame, log) {
 		// 	var seasonData = card.generalCard.bean.peaks.split(',');
 		// 	if (!seasonData[curSeason] || seasonData[curSeason] == "2")
 		// 	{
-		// 		recordCard(card, season, frame.playerInfo.topOnBench);
+		// 		recordCard(card, season, window.playerInfo.topOnBench);
 		// 		++expiredPolitics;
 		// 		politicsStr += card.generalCard.bean.cardName + ":"+curSeason+"期|";
 		// 	}
@@ -925,19 +922,19 @@ var getPoliticsData = function(frame, log) {
 		};
 
 		var initCardInfo = function() {
-			frame.playerInfo.droppable = [];
-			frame.playerInfo.topOnBench = [];
-			frame.playerInfo.goldOn = [];
-			frame.playerInfo.goldOff = [];
-			frame.playerInfo.cur = [];
-			frame.playerInfo.cur.politics = [];
-			frame.playerInfo.cur.politics.name = "内政即将过期";
-			frame.playerInfo.cur.duty = [];
-			frame.playerInfo.cur.bench = [];
-			frame.playerInfo.nxt = [];
-			frame.playerInfo.nxt.duty = [];
-			frame.playerInfo.nxt.bench = [];
-			frame.playerInfo.nxt.politics = [];
+			window.playerInfo.droppable = [];
+			window.playerInfo.topOnBench = [];
+			window.playerInfo.goldOn = [];
+			window.playerInfo.goldOff = [];
+			window.playerInfo.cur = [];
+			window.playerInfo.cur.politics = [];
+			window.playerInfo.cur.politics.name = "内政即将过期";
+			window.playerInfo.cur.duty = [];
+			window.playerInfo.cur.bench = [];
+			window.playerInfo.nxt = [];
+			window.playerInfo.nxt.duty = [];
+			window.playerInfo.nxt.bench = [];
+			window.playerInfo.nxt.politics = [];
 		}; initCardInfo();
 
 		var sep = "合战;"+ getTodayString() + ";" + playerIndex + "." + playerList[playerIndex] + ";";
@@ -970,70 +967,70 @@ var getPoliticsData = function(frame, log) {
 			{
 				if (!seasonData[season+1] || seasonData[season+1] == "2")
 				{
-					recordCard(card, season, frame.playerInfo.cur.politics);
+					recordCard(card, season, window.playerInfo.cur.politics);
 					// ++expiredPolitics;
 					// politicsStr += card.generalCard.bean.cardName + ":"+curSeason+"期|";
 				}
 			}
 
 			if (isCrappyCard(card.generalCard)) {
-				recordCard(card, season, frame.playerInfo.droppable);
+				recordCard(card, season, window.playerInfo.droppable);
 			}
 			else if (season < 10 && seasonData[season] == "2" && !noDropCard(card.generalCard)) {
-				recordCard(card, season, frame.playerInfo.droppable);
+				recordCard(card, season, window.playerInfo.droppable);
 			}
 			else if (season < 9 && seasonData[season + 1] == "2" && i > 9 && !noDropCard(card.generalCard)) {
-				recordCard(card, season, frame.playerInfo.droppable);
+				recordCard(card, season, window.playerInfo.droppable);
 			}
 
-			logExpiredCard(i, card, season, seasonData, frame.playerInfo.cur);
-			logExpiredCard(i, card, season + 1, seasonData, frame.playerInfo.nxt);
+			logExpiredCard(i, card, season, seasonData, window.playerInfo.cur);
+			logExpiredCard(i, card, season + 1, seasonData, window.playerInfo.nxt);
 
 			if (card.generalCard.bean.cardRank >=3)
 			{
 				var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1,"onduty":(i < 10)
 						   ,"expired":(season < 10 && seasonData[season] == "2")};
 				if (i < 10)
-					frame.playerInfo.goldOn.push(data);
+					window.playerInfo.goldOn.push(data);
 				else
-					frame.playerInfo.goldOff.push(data);					
+					window.playerInfo.goldOff.push(data);					
 			}
 
 			if (i > 9) {
 				var season = card.playerGeneralCard.bean.season;
 				var politicses = card.generalCard.bean.politicses.split(',');
 				if ((isHighPolitics(card.generalCard) || isMediumPolitics(card.generalCard)) && politicses[season+1] > politics[0]) {
-					recordCard(card, season+1, frame.playerInfo.nxt.politics);
+					recordCard(card, season+1, window.playerInfo.nxt.politics);
 				}
 
 				if ((shouldAlwaysOn(card.generalCard) || isTopClassCard(card.generalCard)) && (season >= 9 || seasonData[season] != "2"))
 				{
-					recordCard(card, season, frame.playerInfo.topOnBench);
+					recordCard(card, season, window.playerInfo.topOnBench);
 				}
 			}
 		}
 
-		log += ";" + (frame.playerInfo.normalText("当前参战过期", frame.playerInfo.cur.duty));
-		log += ";" + (frame.playerInfo.normalText("替补强将", frame.playerInfo.topOnBench));
-		log += ";" + (frame.playerInfo.normalText("替补内政", frame.playerInfo.nxt.politics));
-		log += ";" + (frame.playerInfo.normalText(frame.playerInfo.cur.politics.name, frame.playerInfo.cur.politics));
-		log += ";" + (frame.playerInfo.normalText("参战即将过期", frame.playerInfo.nxt.duty));
-		log += ";" + (frame.playerInfo.normalText("当前替补过期", frame.playerInfo.cur.bench));
-		log += ";" + (frame.playerInfo.normalText("替补即将过期", frame.playerInfo.nxt.bench));
-		log += ";" + (frame.playerInfo.normalText("可替换武将", frame.playerInfo.droppable));
-		log += ";" + (frame.playerInfo.normalText("四星参战", frame.playerInfo.goldOn));
-		log += ";" + (frame.playerInfo.normalText("四星替补", frame.playerInfo.goldOff));
+		log += ";" + (window.playerInfo.normalText("当前参战过期", window.playerInfo.cur.duty));
+		log += ";" + (window.playerInfo.normalText("替补强将", window.playerInfo.topOnBench));
+		log += ";" + (window.playerInfo.normalText("替补内政", window.playerInfo.nxt.politics));
+		log += ";" + (window.playerInfo.normalText(window.playerInfo.cur.politics.name, window.playerInfo.cur.politics));
+		log += ";" + (window.playerInfo.normalText("参战即将过期", window.playerInfo.nxt.duty));
+		log += ";" + (window.playerInfo.normalText("当前替补过期", window.playerInfo.cur.bench));
+		log += ";" + (window.playerInfo.normalText("替补即将过期", window.playerInfo.nxt.bench));
+		log += ";" + (window.playerInfo.normalText("可替换武将", window.playerInfo.droppable));
+		log += ";" + (window.playerInfo.normalText("四星参战", window.playerInfo.goldOn));
+		log += ";" + (window.playerInfo.normalText("四星替补", window.playerInfo.goldOff));
 
 		// logout
 		frame.logDone = true; frame.logtxt = log;
 		frame.location = getRootURL();
-	}; frame.setTimeout(checkPolitics, 2000);
+	}; window.setTimeout(checkPolitics, 2000);
 };
 
 var getFormationData = function(frame, log)
 {
 	var checkFormation = function() {
-		var formation = findChildScope(frame.rootScope, function(childscope) {
+		var formation = findChildScope(getRootScope(), function(childscope) {
 			return typeof childscope.walletData != "undefined" &&
 				   typeof childscope.getTopPageDisplayFormationItems != "undefined";
 		});
@@ -1041,7 +1038,7 @@ var getFormationData = function(frame, log)
 		if (!formation || !formation.walletData ||
 			!(formation.walletData.gameGold + formation.walletData.portalGold + formation.walletData.bonusPoint))
 		{
-			frame.setTimeout(checkFormation, 2000);
+			window.setTimeout(checkFormation, 2000);
 			return;
 		}
 
@@ -1067,14 +1064,14 @@ var getFormationData = function(frame, log)
 	}
 
 	frame.location = getShopFormationURL();
-	frame.setTimeout(checkFormation, 2000);
+	window.setTimeout(checkFormation, 2000);
 };
 
 var getRankingData = function(frame, log) {
 	var checkRanking = function() {
-		var ranking = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.switchToLastSeason != "undefined"; });
+		var ranking = findChildScope(getRootScope(), function(childscope) { return typeof childscope.switchToLastSeason != "undefined"; });
 		if (!ranking || !ranking.rankings.league) {
-			frame.setTimeout(checkRanking, 2000);
+			window.setTimeout(checkRanking, 2000);
 			return;
 		}
 
@@ -1093,7 +1090,7 @@ var getRankingData = function(frame, log) {
 	}
 
 	frame.location = getWarRankingURL();
-	frame.setTimeout(checkRanking, 2000);
+	window.setTimeout(checkRanking, 2000);
 }
 
 	var c_yellowPre = "<font color='#FF00FF'><b>";
@@ -1133,9 +1130,9 @@ var logOutInfo = function(frame, logFn) {
 	frame.logtxt = "Info;" + playerIndex + ";" + playerList[playerIndex];
 
 	var checkPlayer = function() {
-		frame.player = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.myData != "undefined"; });
+		frame.player = findChildScope(getRootScope(), function(childscope) { return typeof childscope.myData != "undefined"; });
 		if (!frame.player || !frame.player.myData || !frame.player.myData.presentBoxCount) {
-			frame.setTimeout(checkPlayer, 2000);
+			window.setTimeout(checkPlayer, 2000);
 			return;
 		}
 		else {
@@ -1148,7 +1145,7 @@ var logOutInfo = function(frame, logFn) {
 
 	var doLog = function() {
 		if (!frame.logDone) {
-			frame.setTimeout(doLog, 1000);
+			window.setTimeout(doLog, 1000);
 			return;
 		}
 
@@ -1159,12 +1156,11 @@ var logOutInfo = function(frame, logFn) {
 		callForNextPlayer(frame);
 	}
 
-	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-	frame.setTimeout(checkPlayer, 2000);
+	window.setTimeout(checkPlayer, 2000);
 
 	frame.logDone = false;
-	frame.playerInfo = [];
-	frame.playerInfo.normalText = addCategoryNormal;
+	window.playerInfo = [];
+	window.playerInfo.normalText = addCategoryNormal;
 
 	doLog();
 }
@@ -1191,21 +1187,21 @@ var gatherInfo = function()
 		appendLog(logList[14], logArea); // politics
 		appendLog(logList[17], logArea); // formation stats
 
-		appendLog(addCategoryHtml("当前参战过期", frame.playerInfo.cur.duty), logArea);
-		appendLog(addCategoryHtml("替补强将", frame.playerInfo.topOnBench), logArea);
-		appendLog(addCategoryHtml(frame.playerInfo.cur.politics.name, frame.playerInfo.cur.politics), logArea);
-		appendLog(addCategoryHtml("参战即将过期", frame.playerInfo.nxt.duty), logArea);
-		appendLog(addCategoryHtml("当前替补过期", frame.playerInfo.cur.bench), logArea);
-		appendLog(addCategoryHtml("替补即将过期", frame.playerInfo.nxt.bench), logArea);
-		appendLog(addCategoryHtml("替补内政", frame.playerInfo.nxt.politics), logArea);
-		appendLog(addCategoryHtml("可替换武将", frame.playerInfo.droppable), logArea);
-		appendLog(addCategoryHtml("四星参战", frame.playerInfo.goldOn), logArea);
-		appendLog(addCategoryHtml("四星替补", frame.playerInfo.goldOff), logArea);
+		appendLog(addCategoryHtml("当前参战过期", window.playerInfo.cur.duty), logArea);
+		appendLog(addCategoryHtml("替补强将", window.playerInfo.topOnBench), logArea);
+		appendLog(addCategoryHtml(window.playerInfo.cur.politics.name, window.playerInfo.cur.politics), logArea);
+		appendLog(addCategoryHtml("参战即将过期", window.playerInfo.nxt.duty), logArea);
+		appendLog(addCategoryHtml("当前替补过期", window.playerInfo.cur.bench), logArea);
+		appendLog(addCategoryHtml("替补即将过期", window.playerInfo.nxt.bench), logArea);
+		appendLog(addCategoryHtml("替补内政", window.playerInfo.nxt.politics), logArea);
+		appendLog(addCategoryHtml("可替换武将", window.playerInfo.droppable), logArea);
+		appendLog(addCategoryHtml("四星参战", window.playerInfo.goldOn), logArea);
+		appendLog(addCategoryHtml("四星替补", window.playerInfo.goldOff), logArea);
 	};
 
 	var frame = getFrame();
-	frame.playerInfo = [];
-	frame.playerInfo.normalText = addCategoryNormal;
+	window.playerInfo = [];
+	window.playerInfo.normalText = addCategoryNormal;
 
 	var logArea = document.getElementById("logContent");
 	if (logArea)
@@ -1217,13 +1213,12 @@ var gatherInfo = function()
 var politics = [-1, -1, -1];
 var findOpponent = function(frame) {
 	frame.console.log("Formation. " + playerList[playerIndex]);
-	frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
 	frame.location = getWarMatchURL();
 
 	var getOpponent = function() {
-		var series = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.seriesList != "undefined"; });
+		var series = findChildScope(getRootScope(), function(childscope) { return typeof childscope.seriesList != "undefined"; });
 		if (!series) {
-			frame.setTimeout(getOpponent, 2000);
+			window.setTimeout(getOpponent, 2000);
 			return;
 		}
 
@@ -1242,27 +1237,27 @@ var findOpponent = function(frame) {
 
 			var url = getTeamDataURL() + item.vsPlayerId;
 			var openOpponentInfo = function() {
-				var teamData = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
+				var teamData = findChildScope(getRootScope(), function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
 				if (!teamData) {
 					frame.location = url;
-					frame.setTimeout(openOpponentInfo, 2000);
+					window.setTimeout(openOpponentInfo, 2000);
 				}
 				else {
 					getOpponentPolitics(frame);
 				}
-			}; frame.setTimeout(openOpponentInfo, 2000);
+			}; window.setTimeout(openOpponentInfo, 2000);
 		}
 		else {
 			callForNextPlayer(frame);
 		}
-	}; frame.setTimeout(getOpponent, 2000);
+	}; window.setTimeout(getOpponent, 2000);
 };
 
 var getOpponentPolitics = function(frame) {
-	if (!frame.rootScope)
+	if (!getRootScope())
 		return;
 
-	var teamData = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
+	var teamData = findChildScope(getRootScope(), function(childscope) { return typeof childscope.abilityEntity != "undefined"; });
 	politics[0] = teamData.abilityEntity.politics1;
 	politics[1] = teamData.abilityEntity.politics2;
 	politics[2] = teamData.abilityEntity.politics3;
@@ -1277,23 +1272,23 @@ var gotoFormation = function(frame) {
 	frame.location = url;
 
 	var checkFormation = function() {
-		var teamData = findChildScope(frame.rootScope, function(childscope) {
+		var teamData = findChildScope(getRootScope(), function(childscope) {
 			return typeof childscope.tapOkButton != "undefined" &&
 				   typeof childscope.generalTap != "undefined" &&
 				   typeof childscope.abilityEntity != "undefined";
 		});
 		if (!teamData)
-			frame.setTimeout(checkFormation, 2000);
+			window.setTimeout(checkFormation, 2000);
 		else
 			makeFormation(frame);
-	}; frame.setTimeout(checkFormation, 2000);
+	}; window.setTimeout(checkFormation, 2000);
 };
 
 var makeFormation = function(frame) {
 	var DoSwap = function(src, dst, index) {
 		var src1 = src + 7;
 		var dst1 = dst + 7;
-		frame.setTimeout(function() {
+		window.setTimeout(function() {
 			frame.console.log("src: "+src1+". dst: "+dst1);
 			teamData.generalTap(src1);
 			teamData.generalTap(src1);
@@ -1318,7 +1313,7 @@ var makeFormation = function(frame) {
 		return ret;
 	};
 
-	var teamData = findChildScope(frame.rootScope, function(childscope) {
+	var teamData = findChildScope(getRootScope(), function(childscope) {
 		return typeof childscope.tapOkButton != "undefined" &&
 			   typeof childscope.generalTap != "undefined" &&
 			   typeof childscope.abilityEntity != "undefined";
@@ -1375,7 +1370,7 @@ var makeFormation = function(frame) {
 		DoSwap (stack[i], stack[i]-1, index++);
 	}
 
-	frame.setTimeout(function() {
+	window.setTimeout(function() {
 		frame.console.log("Formation. Result: [" + teamData.abilityEntity.politics1 + ", "
 										   + teamData.abilityEntity.politics2 + ", "
 										   + teamData.abilityEntity.politics3 + "]");
@@ -1398,7 +1393,7 @@ var autoLogin = function(frame, nextLogin)
 };
 
 var callForNextPlayer = function(frame, timeout) {
-	frame.setTimeout(function() {
+	window.setTimeout(function() {
 		readyForNext = true;
 	}, timeout ? timeout : 1000);
 };
@@ -1437,7 +1432,6 @@ var autoPlay = function(nextLogin, fn, playerCB) {
 		else {
 			game.contentWindow.alert = function(msg) { frame.console.log("Redirect alert. "+msg); };
 			game.contentWindow.playerTag = "" + playerIndex + ";" + playerList[playerIndex];
-			frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
 			fn(game.contentWindow);
 		}
 	};
@@ -1549,12 +1543,12 @@ var nextGachaType = -1;
 var maxGachaCount = [];
 var curGachaCount = [];
 var doGacha = function(frame, config) {
-	if (!frame.rootScope) {
+	if (!getRootScope()) {
 		frame.console.log("doGacha. Can not find rootScope!");
 		return;
 	}
 
-	var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+	var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 	if ((config.type == 2 && gacha.walletData.gameGold < 30)
 		|| (config.type == 0 && gacha.walletData.point < 100)
 		|| ++curGachaCount[config.type] > maxGachaCount[config.type])
@@ -1581,12 +1575,12 @@ var doGacha = function(frame, config) {
 
 	var checkGachaResult = function() {
 		frame.console.log("Checking gacha result...");
-		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+		var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 		if (!gacha.listupData || !gacha.listupData.entity || !gacha.listupData.entity.generalCardList)
-			frame.setTimeout(checkGachaResult, 2000);
+			window.setTimeout(checkGachaResult, 2000);
 		else
 			collectGacha(frame, config);
-	}; frame.setTimeout(checkGachaResult, 2000);
+	}; window.setTimeout(checkGachaResult, 2000);
 };
 
 // 0:早, 1:普, 2:晚, 3:长
@@ -1903,7 +1897,7 @@ var collectGacha = function(frame, config)
 {
 	var count = 0;
 	var card = null;
-	var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+	var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 	for (var i = 0; i < gacha.listupData.entity.generalCardList.length; i++) {
 		var c = gacha.listupData.entity.generalCardList[i];
 		frame.console.log("Gacha. CardId: "+c.bean.generalCardId+" // Name: "+c.bean.cardName+((c.bean.cardRank|0)+1));
@@ -1924,7 +1918,10 @@ var collectGacha = function(frame, config)
 			|| (c.bean.cardRank == 2 && !isCrappySilver(c))
 			)
 		{
+
+			var values = c.bean.politicses.split(',');
 			card = c;
+			card.politicsVal = values[1];
 			card.gachaListIndex = i;
 			++count;
 		}
@@ -1939,7 +1936,7 @@ var collectGacha = function(frame, config)
 			}
 		}
 		else {
-			frame.setTimeout(function () {
+			window.setTimeout(function () {
 				prepareGacha(frame, config);
 			}, 2000);					
 		}		
@@ -1962,7 +1959,7 @@ var collectGacha = function(frame, config)
 		gacha.gotoPageDischarge(card.gachaListIndex);
 		var checkDiscardData = function() {
 			if (!gacha.dischargeData) {
-				frame.setTimeout(checkDiscardData, 1000);
+				window.setTimeout(checkDiscardData, 1000);
 				return;
 			}
 
@@ -2076,11 +2073,14 @@ var collectGacha = function(frame, config)
 					frame.console.log(frame.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
 					gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
 					gacha.gotoPageResult();
+					gotoNextStep();				
 				}
 			}
-
-			gotoNextStep();
-		}; frame.setTimeout(checkDiscardData, 1000);
+			else
+			{
+				gotoNextStep();				
+			}
+		}; window.setTimeout(checkDiscardData, 1000);
 	}
 	else if (config.autoCollect && count == 1) {
 		for (var i = 0; i < gacha.listupData.entity.generalCardList.length; i++) {
@@ -2089,7 +2089,7 @@ var collectGacha = function(frame, config)
 				gacha.gotoPageDischarge(i);
 				var checkDiscardData = function() {
 					if (!gacha.dischargeData) {
-						frame.setTimeout(checkDiscardData, 1000);
+						window.setTimeout(checkDiscardData, 1000);
 					}
 					else {
 						var discardList = gacha.getDischargeCardList();
@@ -2100,14 +2100,14 @@ var collectGacha = function(frame, config)
 								gacha.setSelectDischargeCardIndex(i);
 								gacha.gotoPageResult();
 
-								frame.setTimeout(function () {
+								window.setTimeout(function () {
 									prepareGacha(frame, config);
 								}, 2000);
 								return;
 							}
 						};
 					}
-				}; frame.setTimeout(checkDiscardData, 1000);
+				}; window.setTimeout(checkDiscardData, 1000);
 			}
 			else if (config.type == 2 && card.bean.cardRank >= 3) {
 				return;
@@ -2120,16 +2120,16 @@ var prepareGacha = function(frame, config) {
 	frame.location = getGachaURL();
 	getRootScope(frame);
 	var checkGacha = function() {
-		var gacha = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
+		var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 		if (!gacha || !gacha.walletData) {
-			frame.setTimeout(checkGacha, 1000);
+			window.setTimeout(checkGacha, 1000);
 		}
 		else {
 			if (gacha && gacha.listupData && gacha.listupData.entity)
 				gacha.listupData.entity.generalCardList = null;
 			doGacha(frame, config);
 		}
-	}; frame.setTimeout(checkGacha, 1000);
+	}; window.setTimeout(checkGacha, 1000);
 };
 
 // type. {2: money, 0: normal}
@@ -2222,17 +2222,16 @@ var newAccount = function(config) {
 			};
 
 			frame.lastItemIndex = -1;
-			frame.rootScope = frame.angular.element(frame.document.getElementsByTagName('body')[0]).scope();
-			frame.tutorial = findChildScope(frame.rootScope, function (childscope) { return typeof childscope.tutorialData != "undefined" });
-			if (frame.rootScope.tutorial.currentPhaseIndex == 0)
+			frame.tutorial = findChildScope(getRootScope(), function (childscope) { return typeof childscope.tutorialData != "undefined" });
+			if (getRootScope().tutorial.currentPhaseIndex == 0)
 			{
-			    frame.rootScope.tutorial.currentItemIndex=9;
+			    getRootScope().tutorial.currentItemIndex=9;
 			    frame.tutorial.click();
-			    frame.setTimeout(frame.autoTutorial, 4000 * timeRatio);
+			    window.setTimeout(frame.autoTutorial, 4000 * timeRatio);
 			}
 			else
 			{
-			    frame.setTimeout(frame.autoTutorial, 200);
+			    window.setTimeout(frame.autoTutorial, 200);
 			}
 		};
 		checkEnv();
@@ -2421,14 +2420,14 @@ var newAccountLoop = function(config)
 
 var openInvitePage = function() {
 	var frame = getFrame();
-	frame.location.href = getInvitationURL();
+	frame.location = getInvitationURL();
 };
 
 var doGetInvitatoinInfo = function(frame) {
 	var checkInvitation = function() {
-		var invitation = findChildScope(frame.rootScope, function(childscope) { return typeof childscope.inviteCount != "undefined"; });
+		var invitation = findChildScope(getRootScope(), function(childscope) { return typeof childscope.inviteCount != "undefined"; });
 		if (!invitation) {
-			frame.setTimeout(checkInvitation, 2000);
+			window.setTimeout(checkInvitation, 2000);
 			return;
 		}
 
@@ -2436,8 +2435,8 @@ var doGetInvitatoinInfo = function(frame) {
 		callForNextPlayer(frame);
 	}
 
-	frame.location.href = getInvitationURL();
-	frame.setTimeout(checkInvitation, 2000);
+	frame.location = getInvitationURL();
+	window.setTimeout(checkInvitation, 2000);
 };
 
 var getInvitatoinInfo = function()
