@@ -88,7 +88,7 @@ var endPlayer = 0;
 var playerList = [];
 var password = "tzh20080426";
 var playerCount = 18;
-var playerCountYahoo = 130;
+var playerCountYahoo = 135;
 
 var getTodayString = function() {
 	var date = new Date();
@@ -344,7 +344,9 @@ var autoTutorialBase = function(frame, config)
         if (getRootScope().tutorial.currentItemIndex == 1)
         {
             /*states.gotoPageStates('oshu');*/
-            states.gotoPageCountry((config && (typeof config.city != "undefined")) ? config.city : 1);/*大阪37,尾张27,1-60*/
+            //(config && (typeof config.city != "undefined")) ? config.city : 1
+            var cityIndex = (((Math.random() * 59)|0)>>0)+1;
+            states.gotoPageCountry(cityIndex);/*大阪37,尾张27,1-60*/
             states.click_gotoNextMessage();
             window.setTimeout(frame.autoTutorial, 1000);
         }
@@ -760,6 +762,8 @@ var getSeriesData = function(frame, log) {
 
 var getConquestInfo = function(frame, log)
 {
+	var stateNames =['oshu','kanto','chubu','kinai','saigoku','kyushu'];
+
 	var checkConquest = function() {
 		var conquest = findChildScope(getRootScope(frame), function(childscope) { return typeof childscope.gotoPageCountry!= "undefined"; });
 		if (!conquest || !conquest.apiResultData || !conquest.apiResultData.data) {
@@ -772,19 +776,126 @@ var getConquestInfo = function(frame, log)
 		var str = sprintf("进军:%02.0f",conquestData.matchCountryId|0) + conquestData.matchCountryName;
 
 		var resources = 0;
-		var cities = conquestData.countryDataMap["COUNTRY_"+conquestData.matchCountryId].castleDataList;
-		for (var i = 0; i < cities.length; i++) {
+		var country = conquestData.countryDataMap["COUNTRY_"+conquestData.matchCountryId];
+		var cities = country.castleDataList;
+		for (var i = 0; i < cities.length - country.occupationCastleNum; i++) {
 			resources += cities[i].resources;
 		};
-		str += ";余额;"+(((conquestData.regularResources - resources)/10000)>>0)+";当前;"+((conquestData.regularResources/10000)>>0)+";所需:"+((resources/10000)>>0)+"万石.";
+		var diff = conquestData.regularResources - resources;
+		str += ";余额;"+(((diff)/10000)>>0)+";当前;"+((conquestData.regularResources/10000)>>0)+";所需:"+((resources/10000)>>0)+"万石.";
 		if (log) {
 			log += ";"+str;
 		}
 		else {
-			frame.console.log("" + playerIndex + ";" + playerList[playerIndex] + str);
+			frame.console.log(window.playerTag+";"+str);
 		}
 
-		callForNextPlayer(frame);
+		var stateCountryList = [0];
+		var lenOfStates = Object.keys(conquestData.statesDataMap).length;
+		for (var i = 0; i < lenOfStates; ++i) {
+			var countryNum = conquestData.statesDataMap["STATES_"+(i+1)].countryNum;
+			stateCountryList.push(countryNum + stateCountryList[stateCountryList.length - 1]);				
+		}
+		window.console.log("stateCountryList: "+stateCountryList);
+
+		var stateOfCity = function(cityIndex) {
+			for (var i = 0; i < stateCountryList.length; i++) {
+				if (cityIndex < stateCountryList[i])
+					return i;
+			};
+		};
+
+		var newTarget = -1;
+		var curState = conquestData.matchStatesId;
+		var diffInState = diff;
+		var diffInNation = diff;
+		var targetInState = -1;
+		var targetInNation = -1;
+
+		for (var i = stateCountryList[curState-1]; i < stateCountryList[curState]; i++) {
+			var country = conquestData.countryDataMap["COUNTRY_"+(i+1)];
+			if (!country.matchableFlag)
+				continue;
+
+			var cities = country.castleDataList;
+			var resources = 0;
+			for (var j = 0; j < cities.length - country.occupationCastleNum; j++) {
+				resources += cities[j].resources;
+			};
+			var newDiff = conquestData.regularResources - resources;
+			if ((diffInState > 0 && newDiff > 0 && newDiff < diffInState) ||
+				(diffInState < 0 && newDiff > 0) ||
+				(diffInState < 0 && newDiff < 0 && newDiff < diffInState))
+			{
+				targetInState = i;
+				diffInState = newDiff;
+			}
+		};
+
+		var lenOfCountry = Object.keys(conquestData.countryDataMap).length;
+		for (var i = 0; i < lenOfCountry; ++i) {
+			var country = conquestData.countryDataMap["COUNTRY_"+(i+1)];
+			if (!country.matchableFlag)
+				continue;
+
+			var cities = country.castleDataList;
+			var resources = 0;
+			for (var j = 0; j < cities.length - country.occupationCastleNum; j++) {
+				resources += cities[j].resources;
+			};
+			var newDiff = conquestData.regularResources - resources;
+			if ((diffInNation > 0 && newDiff > 0 && newDiff < diffInNation) ||
+				(diffInNation < 0 && newDiff > 0) ||
+				(diffInNation < 0 && newDiff < 0 && newDiff < diffInNation))
+			{
+				targetInNation = i;
+				diffInNation = newDiff;
+			}
+		}
+
+		if (targetInNation > -1 || targetInState > -1)
+		{
+			var cityIndex = -1;
+			if ((targetInNation > -1) &&
+				((diffInState - diffInNation > 10*10000) ||
+				 (diffInState < 0 && diffInNation > 0)))
+			{
+				cityIndex = targetInNation;
+				var newTarget = conquestData.countryDataMap["COUNTRY_"+(cityIndex+1)];
+				window.console.log(window.playerTag + sprintf(";新进军:%02.0f",conquestData.matchCountryId|0)+newTarget.countryName+";余额;"+(((diffInNation)/10000)>>0));
+			}
+			else if (targetInState > -1)
+			{
+				cityIndex = targetInState;
+				var newTarget = conquestData.countryDataMap["COUNTRY_"+(cityIndex+1)];
+				window.console.log(window.playerTag + sprintf(";新进军:%02.0f",conquestData.matchCountryId|0)+newTarget.countryName+";余额;"+(((diffInState)/10000)>>0));
+			}
+
+			if (cityIndex > -1)
+			{
+				var stateName = stateNames[stateOfCity(cityIndex) - 1];
+				conquest.gotoPageStates(stateName);
+				conquest.$apply();
+				window.setTimeout(function () {
+					conquest.gotoPageCountry(cityIndex+1);
+					conquest.$apply();
+					window.setTimeout(function () {
+						conquest.changeMatchCountry(cityIndex);
+						window.setTimeout(function () {
+							callForNextPlayer(frame);
+						}, 2000);
+					}, 2000);
+				}, 2000);				
+			}
+			else
+			{
+				callForNextPlayer(frame);
+			}
+		}
+		else
+		{
+			callForNextPlayer(frame);
+		}
 	};
 
 	frame.location = getConquestURL();
@@ -904,8 +1015,10 @@ var getPoliticsData = function(frame, log) {
 		var strPoliticsCandidate = "";
 		var strBenchGoldCard = "";
 
-		var recordCard = function(card, season, list) {
+		var recordCard = function(card, season, list, value) {
 			var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1}
+			if (value)
+				data.value = value;
 			list.push(data);
 		};
 
@@ -999,8 +1112,10 @@ var getPoliticsData = function(frame, log) {
 			if (i > 9) {
 				var season = card.playerGeneralCard.bean.season;
 				var politicses = card.generalCard.bean.politicses.split(',');
-				if ((isHighPolitics(card.generalCard) || isMediumPolitics(card.generalCard)) && politicses[season+1] > politics[0]) {
-					recordCard(card, season+1, window.playerInfo.nxt.politics);
+				if ((isHighPolitics(card.generalCard) || isMediumPolitics(card.generalCard)) &&
+					(politicses[season+1] > politics[0] || window.playerInfo.cur.politics.length > 0))
+				{
+					recordCard(card, season+1, window.playerInfo.nxt.politics, politicses[season+1]);
 				}
 
 				if ((shouldAlwaysOn(card.generalCard) || isTopClassCard(card.generalCard)) && (season >= 9 || seasonData[season] != "2"))
@@ -1098,7 +1213,10 @@ var getRankingData = function(frame, log) {
 	var c_redPre = "<font color='red'><b>";
 	var c_redSuf = "</b></font>";
 	var infoStr = function(item, markup) {
-		var str = item.name+((item.rank|0)+1)+":"+item.season+"期|";
+		var str = item.name+((item.rank|0)+1);
+		if (item.value)
+			str += ":"+item.value;
+		str += ":"+item.season+"期|";
 		if (markup)
 			str = item.rank > 2 ? (c_yellowPre+str+c_yellowSuf) : (c_redPre+str+c_redSuf);
 		return str;
@@ -1277,10 +1395,13 @@ var gotoFormation = function(frame) {
 				   typeof childscope.generalTap != "undefined" &&
 				   typeof childscope.abilityEntity != "undefined";
 		});
-		if (!teamData)
+		if (!teamData) {
 			window.setTimeout(checkFormation, 2000);
-		else
-			makeFormation(frame);
+			return;
+		}
+
+		getFrame().alert = function(msg) { frame.console.log("Redirect alert. "+msg); };
+		makeFormation(frame);
 	}; window.setTimeout(checkFormation, 2000);
 };
 
@@ -1431,7 +1552,7 @@ var autoPlay = function(nextLogin, fn, playerCB) {
 		}
 		else {
 			game.contentWindow.alert = function(msg) { frame.console.log("Redirect alert. "+msg); };
-			game.contentWindow.playerTag = "" + playerIndex + ";" + playerList[playerIndex];
+			window.playerTag = "" + playerIndex + ";" + playerList[playerIndex];
 			fn(game.contentWindow);
 		}
 	};
@@ -1818,6 +1939,8 @@ var isHighPolitics = function(card) {
 		|| card.bean.generalCardId == 10320 // Name: 毛利元就3
 		|| card.bean.generalCardId == 10536 // Name: 浅井久政3
 		|| card.bean.generalCardId == 10352 // Name: 直江兼続3
+		|| card.bean.generalCardId == 10222 // Name: 大久保長安3
+		|| card.bean.generalCardId == 10316 // Name: 本多正信3
 	;
 };
 //CardId: 10585 // Name: 黒田長政4
@@ -2070,7 +2193,7 @@ var collectGacha = function(frame, config)
 				|| (card.bean.cardRank == 2 && !isCrappySilver(card)))
 			{
 				if (candidates.length > 0) {
-					frame.console.log(frame.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
+					frame.console.log(window.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
 					gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
 					gacha.gotoPageResult();
 					gotoNextStep();				
@@ -2431,7 +2554,7 @@ var doGetInvitatoinInfo = function(frame) {
 			return;
 		}
 
-		frame.console.log(frame.playerTag+";邀请完成:"+invitation.inviteCount+";URL:"+invitation.inviteUrl);
+		frame.console.log(window.playerTag+";邀请完成:"+invitation.inviteCount+";URL:"+invitation.inviteUrl);
 		callForNextPlayer(frame);
 	}
 
