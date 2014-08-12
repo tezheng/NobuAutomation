@@ -1,33 +1,7 @@
-	//(function(){
-//window.doLogin = function() {
-// var doLogin = function() {
-// 	window.setTimeout(function() {
-// 		//$("input[name='email']").val('xiaotenobu12@gmail.com');
-// 		//$("input[name='password']").val('tzh20080426');
-// 		document.getElementById('login').submit();
-// 	}, 5000);
-// 	//window.location = 'http://user.mobcast.jp/login?guid=ON&return_to=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&sc=on';
-// }
-//})()
 
-/*
-auto yahoo email register
-javascript:(
-(function() {
-var autoYahooEmail = function() {
-  document.getElementById('yid').value = "xiaotenobu";
-  document.getElementById('pw').value = "";
-  document.getElementById('pw2').value = "";
-  document.getElementById('postalCode_a').value = "1900155";
-  document.getElementById('male').checked = true;
-  document.getElementById('birth').value = "19820217";
-  document.getElementById('qa').value = "Beijing";
-  document.getElementById('numok').checked = false;
-};
-autoYahooEmail();
-})()
-)
-*/
+//TODO
+// 分析同组号
+//
 
 var loginURL = "http://user.mobcast.jp/login?guid=ON&return_to=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&sc=on";
 var newUserURL = "http://gmpa.jp/regist.php?gmpa=on&input=1&back_url=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&gid=23&sid=0";
@@ -62,6 +36,10 @@ var getOrganizeURL = function() {
 	return getRootURL() + "organize/general";
 };
 
+var getOrganizeFormationURL = function() {
+	return getRootURL() + "organize/formation";
+};
+
 var getTeamDataURL = function() {
 	return getRootURL() + "team_data?userID=";
 };
@@ -88,7 +66,7 @@ var endPlayer = 0;
 var playerList = [];
 var password = "tzh20080426";
 var playerCount = 18;
-var playerCountYahoo = 135;
+var playerCountYahoo = 140;
 
 var getTodayString = function() {
 	var date = new Date();
@@ -124,6 +102,9 @@ var initPlayerList = function() {
 		playerList.push(email);
 	};
 	for (var i = 1; i <= playerCountYahoo; ++i) {
+		if (i>=126 && i<=132)
+			continue;
+
 		var email = sprintf("xiaotenobu%02.0f@yahoo.co.jp", i);
 		playerList.push(email);
 	};
@@ -705,6 +686,344 @@ var collectChakiAward = function(frame) {
 		window.setTimeout(checkPlayer, 2000);
 };
 
+var gotoOrganizeFormation = function(frame)
+{
+	var checkFormation = function()
+	{
+		var formation = findChildScope(getRootScope(), function(childscope) {
+			return typeof childscope.getFormationDataById != "undefined";
+		});
+
+		if (!formation || !formation.formationList || !formation.formationList.formation) {
+			window.setTimeout(checkFormation, 2000);
+			return;
+		}
+
+		autoFormation(getFrame());
+	};
+
+	frame.location = getOrganizeFormationURL();
+	window.setTimeout(checkFormation, 2000);
+};
+
+var autoFormation = function(frame)
+{
+	var formation = findChildScope(getRootScope(), function(childscope) {
+		return typeof childscope.getFormationDataById!= "undefined";
+	});
+
+	window.primaryFormations = [];
+	window.secondaryFormations = [];
+
+	var formationList = formation.formationList.formation;
+	for (var i = 0; i < formationList.length; i++) {
+		var formation = formationList[i];
+
+		var data = [];
+		data.level = formation.bean.cardRank;
+		data.Id = formation.bean.formationCardId;
+		data.name = formation.bean.formationName;
+		data.leadership = formation.bean.bonusLeadership;
+		data.offense = formation.bean.bonusOffense;
+		data.defense = formation.bean.bonusDefense;
+		data.wisdom = formation.bean.bonusWisdom;
+		data.sum = data.leadership + data.offense + data.defense + data.wisdom;
+
+		data.requriements = [];
+		var posList = formation.formationPositionList;
+		for (var j = 0; j < posList.length; j++) {
+			var pos = posList[j];
+			if (pos.bean.armType != -1) {
+				data.requriements.push({"armType":pos.bean.armType, "armTypeCode":pos.armTypeCode});
+			}
+		};
+
+		if (data.leadership >= 5 && (data.leadership + data.sum) >= 29) {
+			primaryFormations.push(data);
+		}
+		else {
+			secondaryFormations.push(data);
+		}
+	};
+
+	primaryFormations = primaryFormations.sort(function(a,b) { return a.sum < b.sum; });
+	for (var key in primaryFormations) {
+		var f = primaryFormations[key];
+		window.console.log("优选阵型."+f.Id+"."+f.name+(f.level+1)+".统:"+f.leadership+".总:"+f.sum);
+	};
+	for (var key in secondaryFormations) {
+		var f = secondaryFormations[key];
+		window.console.log("一般阵型."+f.Id+"."+f.name+(f.level+1));
+	};
+
+	var gotoOrganize = function(frame) {
+		var checkOrganize = function() {
+			var teamData = findChildScope(getRootScope(), function(childscope) {
+				return typeof childscope.tapOkButton != "undefined" &&
+					   typeof childscope.generalTap != "undefined" &&
+					   typeof childscope.abilityEntity != "undefined";
+			});
+
+			if (!teamData) {
+				window.setTimeout(checkOrganize, 2000);
+				return;
+			}
+
+			doAutoFormation(getFrame());
+		};
+
+		frame.location = getOrganizeURL();
+		window.setTimeout(checkOrganize, 2000);
+	};
+
+	gotoOrganize(frame);
+};
+
+var getCardRatio = function(card, value)
+{
+	if (card.bean.generalCardId == 10459) // 延沢満延4.
+	{
+		return 1.0;
+	}
+	if (card.bean.generalCardId == 10327 || // Name: 伊達政宗3
+		card.bean.generalCardId == 10488)   // Name: 伊達政宗3
+	{
+		return value * 1.7;		
+	}
+
+	return value;
+};
+
+var getCardStr = function(c)
+{
+	return c.generalCard.bean.cardName+(c.generalCard.bean.cardRank+1)+"."+(c.playerGeneralCard.bean.season+1)+"期";
+};
+
+var doAutoFormation = function(frame)
+{
+	var teamData = findChildScope(getRootScope(), function(childscope) {
+		return typeof childscope.tapOkButton != "undefined" &&
+			   typeof childscope.generalTap != "undefined" &&
+			   typeof childscope.abilityEntity != "undefined";
+	});
+
+	var politicsStr = ""; var politicsCost = 0;
+	var primaryList = []; var secondaryList = []; var subsitutionList = []; var otherList = []; var allList = [];
+	for (var i = 0; i < teamData.positionArray.list.length; i++) {
+		var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
+		var generalCard = card.generalCard;
+		if (i > 6 && i < 10) {
+			politicsStr += getCardStr(card)+"|";
+			politicsCost += generalCard.bean.cost;
+			continue;
+		}
+
+		var season = card.playerGeneralCard.bean.season|0;
+		var seasonData = card.generalCard.bean.peaks.split(',');
+
+		var offenseData = card.generalCard.bean.offenses.split(',');
+		var defenseData = card.generalCard.bean.defenses.split(',');
+		var leadershipData = card.generalCard.bean.leaderships.split(',');
+		var wisdomData = card.generalCard.bean.wisdoms.split(',');
+
+		generalCard.curData = [];
+		generalCard.curData.offense = offenseData[season]|0;
+		generalCard.curData.defense = defenseData[season]|0;
+		generalCard.curData.leadership = leadershipData[season]|0;
+		generalCard.curData.wisdom = wisdomData[season]|0;
+
+		if (shouldOn(card.generalCard, season, seasonData, 1))
+		{
+			card.ratio = getCardRatio(card.generalCard, 2.0);
+			primaryList.push(card);
+			allList.push(card);
+		}
+		else if (shouldOn(card.generalCard, season, seasonData, 2)
+				 || shouldOn(card.generalCard, season, seasonData, 3))
+		{
+			card.ratio = getCardRatio(card.generalCard, 1.5);
+			secondaryList.push(card);
+			allList.push(card);
+		}
+		else if ((generalCard.curData.offense > 90 || generalCard.curData.offense > 90) &&
+				 (generalCard.curData.offense + generalCard.curData.leadership > 150))
+		{
+			card.ratio = getCardRatio(card.generalCard, 1.2);
+			subsitutionList.push(card);
+			allList.push(card);			
+		}
+		else if ((generalCard.curData.offense > 77 || generalCard.curData.leadership > 77) &&
+				 (generalCard.curData.offense + generalCard.curData.leadership > 135))
+		{
+			card.ratio = getCardRatio(card.generalCard, 1.0);
+			subsitutionList.push(card);
+			allList.push(card);
+		}
+		else
+		{
+			card.ratio = 0.8;
+			otherList.push(card);
+		}
+	}
+
+	for (var key in primaryList) {
+		var c = primaryList[key];
+		frame.console.log("排阵.1等大将:"+getCardStr(c));
+	}
+	for (var key in secondaryList) {
+		var c = secondaryList[key];
+		frame.console.log("排阵.2等大将:"+getCardStr(c));
+	}
+	for (var key in subsitutionList) {
+		var c = subsitutionList[key];
+		frame.console.log("排阵.3等大将:"+getCardStr(c));
+	}
+
+	if (allList.length < 12)
+	{
+		otherList = otherList.sort(function(a,b) {a.generalCard.curData.offense > b.generalCard.curData.offense; });
+		for (var i = 0; i < (12 - allList.length); i++) {
+			allList.push(otherList[i]);
+			frame.console.log("排阵.补充大将:"+getCardStr(otherList[i]));
+		};
+	}
+
+	var calcFormation = function(f) {
+		f.politicsStr = politicsStr;
+		f.politicsCost = politicsCost;
+
+		var group = [];
+		getCardGroup(f, group, 7, allList, 0);
+
+		if (f.newCardList) {
+			var str = "";
+			for (var i = 0; i < f.newCardList.length; i++) {
+				str += getCardStr(f.newCardList[i]) + "|";
+			}
+			window.console.log("formation: " + f.name + "score: "+ f.score 
+							 + ". cost: " + f.cost + ". " + str + ". 内政: "+f.politicsStr);
+			return 1;
+		}
+		else
+			return 0;
+	}
+
+	var fcount = 0;
+	for (var key in window.primaryFormations)
+	{
+		var f = window.primaryFormations[key];
+		fcount += calcFormation(f);
+	}
+
+	if (fcount == 0)
+	{
+		for (var key in window.secondaryFormations)
+		{
+			var f = window.secondaryFormations[key];
+			fcount += calcFormation(f);
+		}	
+	}
+};
+
+var getCardGroup = function(f, ret, count, cardList, startIndex)
+{
+	for (var i = startIndex; i < cardList.length; ++i)
+	{
+		ret.push(cardList[i]);
+		if (ret.length == 7) {
+			var score = validateGroup(f, ret);
+			if (score > -1 && (!f.score || score>f.score)) {
+				f.score = score;
+				f.cost = ret.cost;
+				f.newCardList = [].concat(ret);
+			}
+		}
+		else {
+			getCardGroup(f, ret, count - 1, cardList, i + 1);			
+		}
+		ret.pop();
+	}
+};
+
+var validateGroup = function(f, cardList)
+{
+	var posBonus = 8;
+	for (var j = 0; j < f.requriements.length; j++) { if (f.requriements[j].armType < 1000) var posBonus = 12; }
+	
+	var bonusVal = [0, 5, 8, 10, 12];
+	var bonusMap = {};
+
+	var cost = f.politicsCost;
+	var offense = f.offense * 7; var defense = f.offense * 7;
+	var leadership = f.leadership * 7; var wisdom = f.leadership * 7;
+
+	var requriements = [].concat(f.requriements);
+	var str = "";
+	for (var i = 0; i < cardList.length; i++) {
+		var card = cardList[i].generalCard;
+		var matchData = card.curData;
+		str += card.bean.cardName+"|";
+
+		if (!bonusMap[card.groupName]) {
+			bonusMap[card.groupName] = {"count":1,"ratio":cardList[i].ratio};
+		}
+		else {
+			bonusMap[card.groupName].count += 1;
+			bonusMap[card.groupName].ratio += cardList[i].ratio;
+		}
+
+		cost += card.bean.cost;
+		offense += matchData.offense * cardList[i].ratio;
+		defense += matchData.defense * cardList[i].ratio;
+		leadership += matchData.leadership * cardList[i].ratio;
+		wisdom += matchData.wisdom * cardList[i].ratio;
+
+		for (var j = 0; j < requriements.length; j++) {
+			if (card.bean.armType == requriements[j].armType) {
+				offense += posBonus * cardList[i].ratio;
+				defense += posBonus * cardList[i].ratio;
+				leadership += posBonus * cardList[i].ratio;
+				wisdom += posBonus * cardList[i].ratio;
+				requriements.splice(j, 1);
+				break;
+			}
+			else if (requriements[j].armType >= 1000) {
+				var code = requriements[j].armType - 1000;
+				if (((card.bean.armType/3)>>0) == code) {
+					offense += posBonus * cardList[i].ratio;
+					defense += posBonus * cardList[i].ratio;
+					leadership += posBonus * cardList[i].ratio;
+					wisdom += posBonus * cardList[i].ratio;
+					requriements.splice(j, 1);
+					break;
+				}
+			}
+		};
+	};
+
+	for (var key in bonusMap) {
+		var item = bonusMap[key];
+		var familyBonus = (item.count > bonusVal.length) ? bonusVal[bonusVal.length-1]:bonusVal[item.count-1];
+		offense += familyBonus * item.ratio;
+		defense += familyBonus * item.ratio;
+		leadership += familyBonus * item.ratio;
+		wisdom += familyBonus * item.ratio;
+	}
+
+	var score = leadership * 1.6 + offense * 1.4 + wisdom * 1.2 + defense;
+	//window.console.log("formation: " + f.name + "score: "+ score + ". cost: " + cost + ". " + str);// + ". 内政: "+f.politicsStr);
+
+	if (cost > 110)
+		return -1;
+	if (requriements.length > 0)
+		return -1;
+
+	cardList.str = str;
+	cardList.cost = cost;
+	return (score>>0);
+};
+
+
 var getSeriesData = function(frame, log) {
 	var resource = 0;
 	var results = [0, 0, 0];
@@ -1118,7 +1437,7 @@ var getPoliticsData = function(frame, log) {
 					recordCard(card, season+1, window.playerInfo.nxt.politics, politicses[season+1]);
 				}
 
-				if ((shouldAlwaysOn(card.generalCard) || isTopClassCard(card.generalCard)) && (season >= 9 || seasonData[season] != "2"))
+				if (shouldOn(card.generalCard, season, seasonData))
 				{
 					recordCard(card, season, window.playerInfo.topOnBench);
 				}
@@ -1705,20 +2024,52 @@ var doGacha = function(frame, config) {
 };
 
 // 0:早, 1:普, 2:晚, 3:长
-var getSeasonType = function(seasonData) {
-	if (seasonData[2] == "1") {
+var getSeasonType = function(card) {
+	if (card.growth.growthIconCode == "PREMATURE")
 		return 0;
-	}
-	else if (seasonData[4] == "1") {
-		if (seasonData[5] == "2")
-			return 1;
-		else
-			return 3;
-	}
-	else if (seasonData[6] == "1") {
+	else if (card.growth.growthIconCode == "NORMAL")
+		return 1;
+	else if (card.growth.growthIconCode == "LATE")
 		return 2;
-	}
+	else if (card.growth.growthIconCode == "ENDURE")
+		return 3;
+
 	return -1;
+};
+
+var notInBadShape = function(card, season, seasonData)
+{
+	var refData = card.growth.bean.offenses.split(',');
+	return (season < 10) && (refData[season]/refData[0] > 0.9);
+}
+
+var isInGoodShape = function(card, season, seasonData)
+{
+	var type = getSeasonType(card);
+	return ((type == 0 && (season == 1 || season == 2))
+		 || (type == 1 && (season > 1 && season < 5))
+		 || (type == 2 && (season > 2 && season < 7))
+		 || (type == 3 && (season > 1 && season < 7))
+		   );
+};
+
+var isinExcelentShape = function(card, season, seasonData)
+{
+	return (season < 10) && (seasonData[season] == "1");
+};
+
+var shouldOn = function(card, season, seasonData, level)
+{
+	if ((!level || level == 1) && shouldAlwaysOn(card) && notInBadShape(card, season, seasonData))
+		return true;
+
+	if ((!level || level == 2) && shouldOnIfInGoodShape(card) && isInGoodShape(card, season, seasonData))
+		return true;
+
+	if ((!level || level == 3) && isTopClassCard(card) && isInGoodShape(card, season, seasonData))
+		return true;
+
+	return false;
 };
 
 var shouldAlwaysOn = function(card)
@@ -1728,21 +2079,27 @@ var shouldAlwaysOn = function(card)
 		|| card.bean.generalCardId == 10382 // Name: 朝比奈泰能3
 		|| card.bean.generalCardId == 10327 // Name: 伊達政宗3
 		|| card.bean.generalCardId == 10488 // Name: 伊達政宗3
-		|| card.bean.generalCardId == 10325	 // 	島津義弘3	8023
-		|| card.bean.generalCardId == 10305	 // 	真田幸村3	7945
-		|| card.bean.generalCardId == 10171	 // 	武田信玄3	7230
-		|| card.bean.generalCardId == 10326	 // 	島津家久3	7820
-		|| card.bean.generalCardId == 10034	 // 	片倉重長2	7245
-		|| card.bean.generalCardId == 10170	 // 	柳生三厳2	6735
-		|| card.bean.generalCardId == 10228	 // 	島津貴久2	5720
-		|| card.bean.generalCardId == 10209	 // 	前田利家2	5530
-		|| card.bean.generalCardId == 10229	 // 	島津歳久3	5080
-		|| card.bean.generalCardId == 10120	 // 	柳生宗矩1	4517
+		|| card.bean.generalCardId == 10325	 // 	島津義弘3 8023
+		|| card.bean.generalCardId == 10305	 // 	真田幸村3	 7945
+		|| card.bean.generalCardId == 10171	 // 	武田信玄3	 7230
+		|| card.bean.generalCardId == 10326	 // 	島津家久3	 7820
+		|| card.bean.generalCardId == 10034	 // 	片倉重長2	 7245
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
-//		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	8178
+//		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	 8178
+	;
+};
+
+var shouldOnIfInGoodShape = function(card)
+{
+	return false
+		|| card.bean.generalCardId == 10170	 // 	柳生三厳2	 6735
+		|| card.bean.generalCardId == 10228	 // 	島津貴久2	 5720
+		|| card.bean.generalCardId == 10209	 // 	前田利家2	 5530
+		|| card.bean.generalCardId == 10229	 // 	島津歳久3	 5080
+		|| card.bean.generalCardId == 10120	 // 	柳生宗矩1	 4517
 	;
 };
 
@@ -1756,37 +2113,37 @@ var isBestCheapCard = function(card)
 var isTopClassCard = function(card)
 {
 	return false
-		|| card.bean.generalCardId == 10213	 // 	福島正則2	5978
-		|| card.bean.generalCardId == 10216	 // 	後藤基次2	5635
-		|| card.bean.generalCardId == 10267	 // 	服部正成2	4747
-		|| card.bean.generalCardId == 10265	 // 	山本晴幸2	4513
+		|| card.bean.generalCardId == 10213	 // 	福島正則2	 5978
+		|| card.bean.generalCardId == 10216	 // 	後藤基次2	 5635
+		|| card.bean.generalCardId == 10267	 // 	服部正成2	 4747
+		|| card.bean.generalCardId == 10265	 // 	山本晴幸2	 4513
 		|| card.bean.generalCardId == 10254	 // 	長宗我部国親2 4022
 
-		|| card.bean.generalCardId == 10339	 // 	村上義清3	7748
-		|| card.bean.generalCardId == 10321	 // 	吉川元春3	7155
-		|| card.bean.generalCardId == 10172	 // 	山県昌景3	7056
-		|| card.bean.generalCardId == 10311	 // 	加藤清正3	6974
-		|| card.bean.generalCardId == 10307	 // 	柴田勝家3	6763
-		|| card.bean.generalCardId == 10315	 // 	本多忠勝3	6730
-		|| card.bean.generalCardId == 10333	 // 	最上義光3	6672
-		|| card.bean.generalCardId == 10308	 // 	滝川一益3	6495
-		|| card.bean.generalCardId == 10319	 // 	北条綱成3	6468
-		|| card.bean.generalCardId == 10231	 // 	新納忠元3	6144
-		|| card.bean.generalCardId == 10532	 // 	六角義賢3	6135
-		|| card.bean.generalCardId == 10337	 // 	斎藤道三3	6107
-		|| card.bean.generalCardId == 10238	 // 	安東愛季3	5939
-		|| card.bean.generalCardId == 10175	 // 	立花宗茂3	5710
-		|| card.bean.generalCardId == 10338	 // 	斎藤義龍3	5451
-		|| card.bean.generalCardId == 10343	 // 	松永久秀3	5420
-		|| card.bean.generalCardId == 10252	 // 	十河一存3	5332
-		|| card.bean.generalCardId == 10233	 // 	伊達成実3	5106
-		|| card.bean.generalCardId == 10357	 // 	鈴木重秀3	4860
-		|| card.bean.generalCardId == 10163	 // 	江里口信常3	4731
-		|| card.bean.generalCardId == 10313	 // 	大谷吉継3	4524
+		|| card.bean.generalCardId == 10339	 // 	村上義清3 7748
+		|| card.bean.generalCardId == 10321	 // 	吉川元春3	 7155
+		|| card.bean.generalCardId == 10172	 // 	山県昌景3	 7056
+		|| card.bean.generalCardId == 10311	 // 	加藤清正3	 6974
+		|| card.bean.generalCardId == 10307	 // 	柴田勝家3	 6763
+		|| card.bean.generalCardId == 10315	 // 	本多忠勝3	 6730
+		|| card.bean.generalCardId == 10333	 // 	最上義光3	 6672
+		|| card.bean.generalCardId == 10308	 // 	滝川一益3	 6495
+		|| card.bean.generalCardId == 10319	 // 	北条綱成3	 6468
+		|| card.bean.generalCardId == 10231	 // 	新納忠元3	 6144
+		|| card.bean.generalCardId == 10532	 // 	六角義賢3	 6135
+		|| card.bean.generalCardId == 10337	 // 	斎藤道三3	 6107
+		|| card.bean.generalCardId == 10238	 // 	安東愛季3	 5939
+		|| card.bean.generalCardId == 10175	 // 	立花宗茂3	 5710
+		|| card.bean.generalCardId == 10338	 // 	斎藤義龍3	 5451
+		|| card.bean.generalCardId == 10343	 // 	松永久秀3	 5420
+		|| card.bean.generalCardId == 10252	 // 	十河一存3	 5332
+		|| card.bean.generalCardId == 10233	 // 	伊達成実3	 5106
+		|| card.bean.generalCardId == 10357	 // 	鈴木重秀3	 4860
+		|| card.bean.generalCardId == 10163	 // 	江里口信常3 4731
+		|| card.bean.generalCardId == 10313	 // 	大谷吉継3	 4524
 
-		|| card.bean.generalCardId == 10306	 // 	織田信長3	5155
-		|| card.bean.generalCardId == 10318	 // 	北条氏康3	3632
-		|| card.bean.generalCardId == 10173	 // 	上杉謙信3	3571
+		|| card.bean.generalCardId == 10306	 // 	織田信長3	 5155
+		|| card.bean.generalCardId == 10318	 // 	北条氏康3	 3632
+		|| card.bean.generalCardId == 10173	 // 	上杉謙信3	 3571
 
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
@@ -1838,18 +2195,19 @@ var noDropCard = function(card)
 {
 	if (card.bean.cardRank >= 3)
 		return true;
+	return false;
 
-	return card.bean.generalCardId == 10376 // Name: 柳生宗矩2
-		|| card.bean.generalCardId == 10382 // Name: 朝比奈泰能3
-		|| card.bean.generalCardId == 10327 // Name: 伊達政宗3
-		|| card.bean.generalCardId == 10488 // Name: 伊達政宗3
-		|| card.bean.generalCardId == 10325 // Name: 島津義弘3
-		|| card.bean.generalCardId == 10305 // Name: 真田幸村3
-		|| card.bean.generalCardId == 10343 // Name: 松永久秀3
-		|| card.bean.generalCardId == 10171 // Name: 武田信玄3
-		|| card.bean.generalCardId == 10318 // Name: 北条氏康3
-		|| card.bean.generalCardId == 10306 // Name: 織田信長3
-	;
+	// return card.bean.generalCardId == 10376 // Name: 柳生宗矩2
+	// 	|| card.bean.generalCardId == 10382 // Name: 朝比奈泰能3
+	// 	|| card.bean.generalCardId == 10327 // Name: 伊達政宗3
+	// 	|| card.bean.generalCardId == 10488 // Name: 伊達政宗3
+	// 	|| card.bean.generalCardId == 10325 // Name: 島津義弘3
+	// 	|| card.bean.generalCardId == 10305 // Name: 真田幸村3
+	// 	|| card.bean.generalCardId == 10343 // Name: 松永久秀3
+	// 	|| card.bean.generalCardId == 10171 // Name: 武田信玄3
+	// 	|| card.bean.generalCardId == 10318 // Name: 北条氏康3
+	// 	|| card.bean.generalCardId == 10306 // Name: 織田信長3
+	// ;
 }
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
