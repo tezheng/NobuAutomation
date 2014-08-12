@@ -702,6 +702,10 @@ var gotoOrganizeFormation = function(frame)
 		autoFormation(getFrame());
 	};
 
+	var formationArea = document.getElementById("formationContent");
+	if (formationArea)
+		formationArea.remove();
+
 	frame.location = getOrganizeFormationURL();
 	window.setTimeout(checkFormation, 2000);
 };
@@ -785,10 +789,15 @@ var getCardRatio = function(card, value)
 	{
 		return 1.0;
 	}
-	if (card.bean.generalCardId == 10327 || // Name: 伊達政宗3
-		card.bean.generalCardId == 10488)   // Name: 伊達政宗3
+	else if (card.bean.generalCardId == 10327  // Name: 伊達政宗3
+		  || card.bean.generalCardId == 10488) // Name: 伊達政宗3
 	{
-		return value * 1.7;		
+		return value * 1.6;		
+	}
+	else if (card.bean.generalCardId == 10376  // Name: 柳生宗矩2
+		  || card.bean.generalCardId == 10120) // Name: 柳生宗矩1	 4517
+	{
+		return value * 1.4;
 	}
 
 	return value;
@@ -816,6 +825,10 @@ var doAutoFormation = function(frame)
 			politicsStr += getCardStr(card)+"|";
 			politicsCost += generalCard.bean.cost;
 			continue;
+		}
+		else
+		{
+
 		}
 
 		var season = card.playerGeneralCard.bean.season|0;
@@ -881,7 +894,10 @@ var doAutoFormation = function(frame)
 
 	if (allList.length < 12)
 	{
-		otherList = otherList.sort(function(a,b) {a.generalCard.curData.offense > b.generalCard.curData.offense; });
+		otherList = otherList.sort(function(a,b) {
+			return a.generalCard.curData.offense + a.generalCard.curData.leadership * 1.1 
+				 < b.generalCard.curData.offense + b.generalCard.curData.leadership * 1.1;
+		});
 		for (var i = 0; i < (12 - allList.length); i++) {
 			allList.push(otherList[i]);
 			frame.console.log("排阵.补充大将:"+getCardStr(otherList[i]));
@@ -896,12 +912,20 @@ var doAutoFormation = function(frame)
 		getCardGroup(f, group, 7, allList, 0);
 
 		if (f.newCardList) {
-			var str = "";
+			var logArea = document.createElement('div');
+			logArea.id = "formationContent";
+			document.getElementById("formation").appendChild(logArea);
+			logArea = document.getElementById("formationContent");
+
+			var dataList = []
 			for (var i = 0; i < f.newCardList.length; i++) {
-				str += getCardStr(f.newCardList[i]) + "|";
+				var card = f.newCardList[i];
+				var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1};
+				dataList.push(data);
 			}
-			window.console.log("formation: " + f.name + "score: "+ f.score 
-							 + ". cost: " + f.cost + ". " + str + ". 内政: "+f.politicsStr);
+			var strPrefix = "战力: "+c_redPre+f.score+c_redSuf+"."+f.name+". 消耗: "+f.cost+". 内政: "+f.politicsStr+". ";
+			appendLog(addCategoryHtml(strPrefix, dataList), logArea);
+
 			return 1;
 		}
 		else
@@ -951,7 +975,7 @@ var validateGroup = function(f, cardList)
 	for (var j = 0; j < f.requriements.length; j++) { if (f.requriements[j].armType < 1000) var posBonus = 12; }
 	
 	var bonusVal = [0, 5, 8, 10, 12];
-	var bonusMap = {};
+	var familyMap = {};
 
 	var cost = f.politicsCost;
 	var offense = f.offense * 7; var defense = f.offense * 7;
@@ -964,12 +988,12 @@ var validateGroup = function(f, cardList)
 		var matchData = card.curData;
 		str += card.bean.cardName+"|";
 
-		if (!bonusMap[card.groupName]) {
-			bonusMap[card.groupName] = {"count":1,"ratio":cardList[i].ratio};
+		if (!familyMap[card.groupName]) {
+			familyMap[card.groupName] = {"count":1,"ratio":cardList[i].ratio};
 		}
 		else {
-			bonusMap[card.groupName].count += 1;
-			bonusMap[card.groupName].ratio += cardList[i].ratio;
+			familyMap[card.groupName].count += 1;
+			familyMap[card.groupName].ratio += cardList[i].ratio;
 		}
 
 		cost += card.bean.cost;
@@ -1001,8 +1025,8 @@ var validateGroup = function(f, cardList)
 		};
 	};
 
-	for (var key in bonusMap) {
-		var item = bonusMap[key];
+	for (var key in familyMap) {
+		var item = familyMap[key];
 		var familyBonus = (item.count > bonusVal.length) ? bonusVal[bonusVal.length-1]:bonusVal[item.count-1];
 		offense += familyBonus * item.ratio;
 		defense += familyBonus * item.ratio;
@@ -1041,7 +1065,7 @@ var getSeriesData = function(frame, log) {
 			var days = findChildScope(getRootScope(), function(childscope) { return typeof childscope.previousDay != "undefined"; });
 			days.previousDay();
 			days.$apply();
-			window.setTimeout(getData, 3000);			
+			window.setTimeout(getData, 3000);
 		};
 
 		if (series.day > 0) {
@@ -1647,6 +1671,125 @@ var gatherInfo = function()
 	logOutInfo(frame, logFn);
 }
 
+var startOptimiztePolitics = function()
+{
+	doStartInterval(optimizePolitics, function(){advancePlayerBy(1)});
+};
+
+var optimizePolitics = function(frame)
+{
+	var url = getOrganizeURL();
+	frame.location = url;
+
+	var checkFormation = function() {
+		var teamData = findChildScope(getRootScope(), function(childscope) {
+			return typeof childscope.tapOkButton != "undefined" &&
+				   typeof childscope.generalTap != "undefined" &&
+				   typeof childscope.abilityEntity != "undefined";
+		});
+		if (!teamData) {
+			window.setTimeout(checkFormation, 2000);
+			return;
+		}
+		else
+		{
+			frame = getFrame();
+		}
+
+		var DoSwap = function(src, dst, index) {
+			window.setTimeout(function() {
+				frame.console.log("DoSwap. src: "+src+". dst: "+dst);
+				teamData.generalTap(src);
+				teamData.generalTap(src);
+				teamData.generalTap(dst);
+				teamData.generalTap(dst);
+			}, index * 2000);
+		};
+
+		var dstData = [];
+		dstData[0] = teamData.abilityEntity.politics1|0;
+		dstData[1] = teamData.abilityEntity.politics2|0;
+		dstData[2] = teamData.abilityEntity.politics3|0;
+		dstData = dstData.sort();
+		frame.console.log("Formation. Player politics: ["+dstData+"]");
+
+		var politicsCards = [];
+		var familyMap = {};
+		for (var i = 0; i < teamData.positionArray.list.length; i++) {
+			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
+			if (i > 6 && i < 10) {
+				var values = card.generalCard.bean.politicses.split(',');
+				var val = values[card.playerGeneralCard.bean.season];
+				card.politics = val|0;
+				card.currentIndex = i;
+				politicsCards.push(card);
+			}
+
+			if (i < 10) {
+				if (!familyMap[card.generalCard.groupName]) {
+					familyMap[card.generalCard.groupName] = 1;
+				}
+				else {
+					familyMap[card.generalCard.groupName] += 1;
+				}				
+			}
+		}
+
+		politicsCards = politicsCards.sort(function(a,b) { return a.politics > b.politics; });
+
+		var swapId = 0;
+		var costLeft = teamData.abilityEntity.maxCost - teamData.abilityEntity.cost;
+		for (var i = 0; i < teamData.positionArray.list.length; i++) {
+			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
+			var generalCard = card.generalCard;
+			if (i > 9 && isPoliticsCard(generalCard))
+			{
+				var values = generalCard.bean.politicses.split(',');
+				var val = values[card.playerGeneralCard.bean.season];
+				card.politics = val|0;
+				card.currentIndex = i;
+
+				var familyCountSrc = familyMap.hasOwnProperty(politicsCards[0].generalCard.groupName) ? familyMap[politicsCards[0].generalCard.groupName] - 1 : 0;
+				var familyCountDst = familyMap.hasOwnProperty(card.generalCard.groupName) ? familyMap[card.generalCard.groupName] : 0;
+				familyCountSrc = (familyCountSrc > 4) ? 0 : familyCountSrc;
+				familyCountDst = (familyCountDst > 4) ? 0 : familyCountDst;
+				srcBonus = (familyCountSrc > familyCountDst) ? 3 : 0;
+				dstBonus = (familyCountSrc < familyCountDst) ? 3 : 0;
+				if (card.politics + dstBonus > politicsCards[0].politics + srcBonus) {
+					var needCost = card.generalCard.bean.cost - politicsCards[0].generalCard.bean.cost;
+					if (needCost < costLeft) {
+						frame.console.log(window.playerTag+". Old Politics: "+politicsCards[0].politics+"("+srcBonus+")"
+										+". New Politics: "+card.politics+"("+dstBonus+")"+". ExtraCost: "+needCost);
+
+						DoSwap(politicsCards[0].currentIndex, card.currentIndex, ++swapId);
+						costLeft -= needCost;
+
+						var tmp = politicsCards[0].currentIndex;
+						politicsCards[0].currentIndex = card.currentIndex;
+						card.currentIndex = tmp;
+
+						politicsCards[0] = card;
+						politicsCards = politicsCards.sort(function(a,b) { return a.politics > b.politics; });						
+					}
+				}
+			}
+		}
+
+		if (swapId > 0) {
+			window.setTimeout(function() {
+				frame.console.log(window.playerTag + ". Formation. Result: [" + teamData.abilityEntity.politics1 + ", "
+														 + teamData.abilityEntity.politics2 + ", "
+														 + teamData.abilityEntity.politics3 + "]");
+				teamData.tapOkButton();
+			}, ++swapId * 2000);
+		}
+
+		window.setTimeout(function() {
+			callForNextPlayer(frame);
+		}, ++swapId * 2000);
+	}; window.setTimeout(checkFormation, 2000);
+}
+
 var politics = [-1, -1, -1];
 var findOpponent = function(frame) {
 	frame.console.log("Formation. " + playerList[playerIndex]);
@@ -1758,11 +1901,13 @@ var makeFormation = function(frame) {
 			   typeof childscope.generalTap != "undefined" &&
 			   typeof childscope.abilityEntity != "undefined";
 	});
+
 	var dstData = [];
 	dstData[0] = teamData.abilityEntity.politics1|0;
 	dstData[1] = teamData.abilityEntity.politics2|0;
 	dstData[2] = teamData.abilityEntity.politics3|0;
 	frame.console.log("Formation. Player politics: ["+dstData+"]");
+
 	if (Math.abs(dstData[0] - dstData[1]) < 8
 		&& Math.abs(dstData[0] - dstData[2]) < 8
 		&& Math.abs(dstData[1] - dstData[2]) < 8)
