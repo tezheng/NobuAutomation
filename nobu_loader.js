@@ -750,7 +750,7 @@ var autoFormation = function(frame)
 		}
 	};
 
-	primaryFormations = primaryFormations.sort(function(a,b) { return a.sum < b.sum; });
+	primaryFormations = primaryFormations.sort(function(a,b) { return b.sum - a.sum; });
 	for (var key in primaryFormations) {
 		var f = primaryFormations[key];
 		window.console.log("优选阵型."+f.Id+"."+f.name+(f.level+1)+".统:"+f.leadership+".总:"+f.sum);
@@ -894,13 +894,14 @@ var doAutoFormation = function(frame)
 
 	if (allList.length < 12)
 	{
-		otherList = otherList.sort(function(a,b) {
-			return a.generalCard.curData.offense + a.generalCard.curData.leadership * 1.1 
-				 < b.generalCard.curData.offense + b.generalCard.curData.leadership * 1.1;
+		var otherList2 = otherList.sort(function(a,b) {
+			return (b.generalCard.curData.offense + b.generalCard.curData.leadership * 1.1)
+				 - (a.generalCard.curData.offense + a.generalCard.curData.leadership * 1.1);
 		});
-		for (var i = 0; i < (12 - allList.length); i++) {
-			allList.push(otherList[i]);
-			frame.console.log("排阵.补充大将:"+getCardStr(otherList[i]));
+		var toAdd = 12 - allList.length;
+		for (var i = 0; i < toAdd; i++) {
+			allList.push(otherList2[i]);
+			frame.console.log("排阵.补充大将:"+getCardStr(otherList2[i]));
 		};
 	}
 
@@ -1735,7 +1736,7 @@ var optimizePolitics = function(frame)
 			}
 		}
 
-		politicsCards = politicsCards.sort(function(a,b) { return a.politics > b.politics; });
+		politicsCards = politicsCards.sort(function(a,b) { return a.politics - b.politics; });
 
 		var swapId = 0;
 		var costLeft = teamData.abilityEntity.maxCost - teamData.abilityEntity.cost;
@@ -1769,7 +1770,7 @@ var optimizePolitics = function(frame)
 						card.currentIndex = tmp;
 
 						politicsCards[0] = card;
-						politicsCards = politicsCards.sort(function(a,b) { return a.politics > b.politics; });						
+						politicsCards = politicsCards.sort(function(a,b) { return a.politics - b.politics; });						
 					}
 				}
 			}
