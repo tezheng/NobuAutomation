@@ -686,7 +686,7 @@ var collectChakiAward = function(frame) {
 		window.setTimeout(checkPlayer, 2000);
 };
 
-var gotoOrganizeFormation = function(frame)
+var gotoOrganizeFormation = function(frame, nextfn)
 {
 	var checkFormation = function()
 	{
@@ -699,15 +699,30 @@ var gotoOrganizeFormation = function(frame)
 			return;
 		}
 
-		autoFormation(getFrame());
+		if (nextfn)
+			nextfn(getFrame())
+		else
+			autoFormation(getFrame());
 	};
 
-	var formationArea = document.getElementById("formationContent");
-	if (formationArea)
-		formationArea.remove();
+	// hack!
+	if (!nextfn)
+	{
+		var formationArea = document.getElementById("formationContent");
+		if (formationArea)
+			formationArea.remove();		
+	}
 
 	frame.location = getOrganizeFormationURL();
 	window.setTimeout(checkFormation, 2000);
+};
+
+var baseScoreOfFormation = function(f)
+{
+	if (formation.bean.formationCardId == 31)
+		return -100;
+
+	return 0;
 };
 
 var autoFormation = function(frame)
@@ -732,13 +747,20 @@ var autoFormation = function(frame)
 		data.defense = formation.bean.bonusDefense;
 		data.wisdom = formation.bean.bonusWisdom;
 		data.sum = data.leadership + data.offense + data.defense + data.wisdom;
+		data.baseScore = baseScoreOfFormation(formation);
 
-		data.requriements = [];
+		data.requirements = [];
+		data.nonrequirements = [];
 		var posList = formation.formationPositionList;
 		for (var j = 0; j < posList.length; j++) {
 			var pos = posList[j];
 			if (pos.bean.armType != -1) {
-				data.requriements.push({"armType":pos.bean.armType, "armTypeCode":pos.armTypeCode});
+				data.requirements.push({"armType":pos.bean.armType, "armTypeCode":pos.armTypeCode,
+										"sequence":pos.bean.priority, "pos":pos.bean.posX>3500?"front":"back"});
+			}
+			else
+			{
+				data.nonrequirements.push({"sequence":pos.bean.priority, "pos":pos.bean.posX>3500?"front":"back"});
 			}
 		};
 
@@ -808,6 +830,74 @@ var getCardStr = function(c)
 	return c.generalCard.bean.cardName+(c.generalCard.bean.cardRank+1)+"."+(c.playerGeneralCard.bean.season+1)+"期";
 };
 
+var getSkillType = function(skill)
+{
+	if (skill.skillTrigger == 1 || skill.skillTrigger == 3 || skill.skillTrigger == 5)
+	{
+		return "passive";
+	}
+	else if (skill.skillTrigger = 2)
+	{
+		return "reactive";
+	}
+	else
+	{
+		return "proactive";
+	}
+};
+
+var getSkillBonus = function(s)
+{
+	var c_critical_rate = 0.3;
+	var c_win_chance = 0.1;
+
+	var ratio = 1.0;
+	var skill = s.bean;
+	if (skill.skillTrigger == 1 || skill.skillTrigger == 3) // 味方攻击/被攻击
+	{
+		if (skill.skillIcon == 8 || skill.skillIcon == 12)
+			ratio += 0.2 + skill.exeRate / 1600;	// buff味方防御/debuff敌方攻击
+		else if (skill.skillIcon == 9 || skill.skillIcon == 13)
+			ratio += 0.3 + skill.exeRate / 1600;	// buff味方攻击/debuff敌方防御
+		else
+			ratio += 0.5 + skill.exeRate / 800;		// attack
+	}
+	else if (skill.skillTrigger == 5) // 味方会心时
+	{
+		ratio += 0.1 + (skill.exeRate / 800) * c_critical_rate;
+	}
+	else if (skill.skillTrigger == 2) // 自分被攻击时反击
+	{
+		if (skill.conditionParam1 != 0)
+			ratio += 0.3 * (skill.conditionParam1 * skill.conditionParam1 / 49);
+		else
+			ratio += 0.3;
+	}
+	else if (skill.skillTrigger == 7) // 自军胜机中
+	{
+		ratio = 0.9;
+		if (skill.skillIcon == 8 || skill.skillIcon == 9 || skill.skillIcon == 12 || skill.skillIcon == 13)
+		{
+			ratio *= 0.9;
+		}
+	}
+	else
+	{
+		if (skill.skillIcon == 8 || skill.skillIcon == 9 || skill.skillIcon == 12 || skill.skillIcon == 13)
+		{
+			ratio *= 0.9;
+		}
+		else
+		{
+			var multiplier = (skill.conditionParam1 != 0) ? 0.33 : 1;
+			ratio += skill.exeRate * multiplier / 800;			
+		}
+	}
+
+	return ratio;
+};
+
+
 var doAutoFormation = function(frame)
 {
 	var teamData = findChildScope(getRootScope(), function(childscope) {
@@ -826,10 +916,6 @@ var doAutoFormation = function(frame)
 			politicsCost += generalCard.bean.cost;
 			continue;
 		}
-		else
-		{
-
-		}
 
 		var season = card.playerGeneralCard.bean.season|0;
 		var seasonData = card.generalCard.bean.peaks.split(',');
@@ -845,32 +931,34 @@ var doAutoFormation = function(frame)
 		generalCard.curData.leadership = leadershipData[season]|0;
 		generalCard.curData.wisdom = wisdomData[season]|0;
 
+		var collectCards = function(card, ratio, list1, list2)
+		{
+			card.skillType = getSkillType(card.generalCard.skillList[0]);
+			card.skillBonus = getSkillBonus(card.generalCard.skillList[0]);
+			card.ratio = getCardRatio(card.generalCard, ratio) * card.skillBonus;
+			list1.push(card);
+			if (list2)
+				list2.push(card);
+		}
+
 		if (shouldOn(card.generalCard, season, seasonData, 1))
 		{
-			card.ratio = getCardRatio(card.generalCard, 2.0);
-			primaryList.push(card);
-			allList.push(card);
+			collectCards(card, 2.0, primaryList, allList);
 		}
 		else if (shouldOn(card.generalCard, season, seasonData, 2)
-				 || shouldOn(card.generalCard, season, seasonData, 3))
-		{
-			card.ratio = getCardRatio(card.generalCard, 1.5);
-			secondaryList.push(card);
-			allList.push(card);
+			  || shouldOn(card.generalCard, season, seasonData, 3))
+		{ 
+			collectCards(card, 1.5, secondaryList, allList);
 		}
 		else if ((generalCard.curData.offense > 90 || generalCard.curData.offense > 90) &&
 				 (generalCard.curData.offense + generalCard.curData.leadership > 150))
 		{
-			card.ratio = getCardRatio(card.generalCard, 1.2);
-			subsitutionList.push(card);
-			allList.push(card);			
+			collectCards(card, 1.2, subsitutionList, allList);
 		}
 		else if ((generalCard.curData.offense > 77 || generalCard.curData.leadership > 77) &&
 				 (generalCard.curData.offense + generalCard.curData.leadership > 135))
 		{
-			card.ratio = getCardRatio(card.generalCard, 1.0);
-			subsitutionList.push(card);
-			allList.push(card);
+			collectCards(card, 1.0, subsitutionList, allList);
 		}
 		else
 		{
@@ -912,15 +1000,15 @@ var doAutoFormation = function(frame)
 		var group = [];
 		getCardGroup(f, group, 7, allList, 0);
 
-		if (f.newCardList) {
+		if (f.orderedList) {
 			var logArea = document.createElement('div');
 			logArea.id = "formationContent";
 			document.getElementById("formation").appendChild(logArea);
 			logArea = document.getElementById("formationContent");
 
 			var dataList = []
-			for (var i = 0; i < f.newCardList.length; i++) {
-				var card = f.newCardList[i];
+			for (var i = 0; i < f.orderedList.length; i++) {
+				var card = f.orderedList[i];
 				var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1};
 				dataList.push(data);
 			}
@@ -934,10 +1022,17 @@ var doAutoFormation = function(frame)
 	}
 
 	var fcount = 0;
+	var newFormation = null; var score = 0;
 	for (var key in window.primaryFormations)
 	{
 		var f = window.primaryFormations[key];
+		f.maxCost = teamData.abilityEntity.maxCost;
 		fcount += calcFormation(f);
+
+		if (f.score > score) {
+			score = f.score;
+			newFormation = f;
+		}
 	}
 
 	if (fcount == 0)
@@ -945,9 +1040,84 @@ var doAutoFormation = function(frame)
 		for (var key in window.secondaryFormations)
 		{
 			var f = window.secondaryFormations[key];
+			f.maxCost = teamData.abilityEntity.maxCost;
 			fcount += calcFormation(f);
+
+			if (f.score > score) {
+				score = f.score;
+				newFormation = f;
+			}
 		}	
 	}
+
+	var setNewFormation = function(frame)
+	{
+		var formation = findChildScope(getRootScope(), function(childscope) {
+			return typeof childscope.getFormationDataById!= "undefined";
+		});
+
+		var formationList = formation.formationList.formation;
+		for (var i = 0; i < formationList.length; i++) {
+			var f = formationList[i];
+			if (f.bean.formationCardId == newFormation.Id)
+			{
+				formation.showDetail(f.bean.formationCardId);
+				formation.$apply();
+				formation.saveChange();
+				checkTeamData();
+				return;
+			}
+		};
+	};
+
+	var checkTeamData = function ()
+	{
+		teamData = findChildScope(getRootScope(), function(childscope) {
+			return typeof childscope.tapOkButton != "undefined" &&
+				   typeof childscope.generalTap != "undefined" &&
+				   typeof childscope.abilityEntity != "undefined";
+		});
+
+		if (!teamData) {
+			window.setTimeout(checkTeamData, 2000);
+			return;
+		}
+
+		for (var j = 0; j < teamData.positionArray.list.length; j++) {
+			var card2 = teamData.generalList.generalcards[teamData.positionArray.list[j]];
+			card2.cardIndex = j;
+		}
+
+		for (var i = 0; i < newFormation.orderedList.length; i++) {
+			var card = newFormation.orderedList[i];
+			for (var j = 0; j < teamData.positionArray.list.length; j++) {
+				var card2 = teamData.generalList.generalcards[teamData.positionArray.list[j]];
+				if (card.generalCard.bean.generalCardId == card2.generalCard.bean.generalCardId) {
+					DoSwap(card2.cardIndex, i, (i+1));
+					var tmp = card2.cardIndex;
+					card2.cardIndex = i;
+					teamData.generalList.generalcards[teamData.positionArray.list[i]].cardIndex = tmp;
+				}
+			}
+		};
+
+		window.setTimeout(function() {
+			teamData.tapOkButton();
+			callForNextPlayer(frame);
+		}, ++i * 2000);
+	};
+
+	var DoSwap = function(src, dst, index) {
+		window.setTimeout(function() {
+			frame.console.log("DoSwap. src: "+src+". dst: "+dst);
+			teamData.generalTap(src);
+			teamData.generalTap(src);
+			teamData.generalTap(dst);
+			teamData.generalTap(dst);
+		}, index * 2000);
+	};
+
+	gotoOrganizeFormation(frame, setNewFormation);
 };
 
 var getCardGroup = function(f, ret, count, cardList, startIndex)
@@ -960,7 +1130,8 @@ var getCardGroup = function(f, ret, count, cardList, startIndex)
 			if (score > -1 && (!f.score || score>f.score)) {
 				f.score = score;
 				f.cost = ret.cost;
-				f.newCardList = [].concat(ret);
+				f.orderedList = ret.orderedList;
+				ret.orderedList = null;
 			}
 		}
 		else {
@@ -970,10 +1141,12 @@ var getCardGroup = function(f, ret, count, cardList, startIndex)
 	}
 };
 
-var validateGroup = function(f, cardList)
+var validateGroup = function(f, cl)
 {
+	var cardList = [].concat(cl);
+
 	var posBonus = 8;
-	for (var j = 0; j < f.requriements.length; j++) { if (f.requriements[j].armType < 1000) var posBonus = 12; }
+	for (var j = 0; j < f.requirements.length; j++) { if (f.requirements[j].armType < 1000) var posBonus = 12; }
 	
 	var bonusVal = [0, 5, 8, 10, 12];
 	var familyMap = {};
@@ -982,12 +1155,10 @@ var validateGroup = function(f, cardList)
 	var offense = f.offense * 7; var defense = f.offense * 7;
 	var leadership = f.leadership * 7; var wisdom = f.leadership * 7;
 
-	var requriements = [].concat(f.requriements);
-	var str = "";
+	var requirements = [].concat(f.requirements);
 	for (var i = 0; i < cardList.length; i++) {
 		var card = cardList[i].generalCard;
 		var matchData = card.curData;
-		str += card.bean.cardName+"|";
 
 		if (!familyMap[card.groupName]) {
 			familyMap[card.groupName] = {"count":1,"ratio":cardList[i].ratio};
@@ -1003,23 +1174,23 @@ var validateGroup = function(f, cardList)
 		leadership += matchData.leadership * cardList[i].ratio;
 		wisdom += matchData.wisdom * cardList[i].ratio;
 
-		for (var j = 0; j < requriements.length; j++) {
-			if (card.bean.armType == requriements[j].armType) {
+		for (var j = 0; j < requirements.length; j++) {
+			if (card.bean.armType == requirements[j].armType) {
 				offense += posBonus * cardList[i].ratio;
 				defense += posBonus * cardList[i].ratio;
 				leadership += posBonus * cardList[i].ratio;
 				wisdom += posBonus * cardList[i].ratio;
-				requriements.splice(j, 1);
+				requirements.splice(j, 1);
 				break;
 			}
-			else if (requriements[j].armType >= 1000) {
-				var code = requriements[j].armType - 1000;
+			else if (requirements[j].armType >= 1000) {
+				var code = requirements[j].armType - 1000;
 				if (((card.bean.armType/3)>>0) == code) {
 					offense += posBonus * cardList[i].ratio;
 					defense += posBonus * cardList[i].ratio;
 					leadership += posBonus * cardList[i].ratio;
 					wisdom += posBonus * cardList[i].ratio;
-					requriements.splice(j, 1);
+					requirements.splice(j, 1);
 					break;
 				}
 			}
@@ -1035,16 +1206,78 @@ var validateGroup = function(f, cardList)
 		wisdom += familyBonus * item.ratio;
 	}
 
-	var score = leadership * 1.6 + offense * 1.4 + wisdom * 1.2 + defense;
+	var score = f.baseScore + leadership * 1.6 + offense * 1.4 + wisdom * 1.2 + defense;
 	//window.console.log("formation: " + f.name + "score: "+ score + ". cost: " + cost + ". " + str);// + ". 内政: "+f.politicsStr);
 
-	if (cost > 110)
+	if (cost > f.maxCost)
 		return -1;
-	if (requriements.length > 0)
+	if (requirements.length > 0)
 		return -1;
 
-	cardList.str = str;
-	cardList.cost = cost;
+	var orderedList = [];
+	requirements = [].concat(f.requirements);
+	for (var j = 0; j < requirements.length; j++) {
+		var candidateList = [];
+		for (var i = 0; i < cardList.length; i++) {
+			var card = cardList[i];
+			var generalCard = card.generalCard;
+			if ((generalCard.bean.armType == requirements[j].armType) ||
+				(requirements[j].armType >= 1000 && (((generalCard.bean.armType/3)>>0) == requirements[j].armType - 1000)))
+			{
+				if (candidateList.length == 0)
+				{
+					candidateList.push(card);
+				}
+				else
+				{
+					if (requirements[j].sequence < 5 && card.ratio > 1.3)
+					{
+						if (generalCard.skillType == "reactive" ||
+							(generalCard.skillType == "proactiveBuff" && candidateList[0] != "reactive") ||
+							(generalCard.skillType == "proactive" && candidateList[0] != "reactive" && candidateList[0] != "proactiveBuff"))
+						{
+							if (requirements[j].pos == "front" && generalCard.curData.defense > candidateList[0].generalCard.curData.defense)
+								candidateList.unshift(card);
+							else if (requirements[j].pos == "back" && generalCard.curData.defense < candidateList[0].generalCard.curData.defense)
+								candidateList.unshift(card);
+							else if (card.ratio > candidateList[0].ratio)
+								candidateList.unshift(card);
+						}
+					}
+					else if (requirements[j].sequence > 4)
+					{
+						if (generalCard.skillType == "passive" ||
+							(generalCard.skillType == "proactive" && candidateList[0] != "passive"))
+						{
+							if (requirements[j].pos == "front" && generalCard.curData.defense > candidateList[0].generalCard.curData.defense)
+								candidateList.unshift(card);
+							else if (requirements[j].pos == "back" && generalCard.curData.defense < candidateList[0].generalCard.curData.defense)
+								candidateList.unshift(card);
+						}						
+					}
+				}
+			}
+		}
+		cardList.splice(cardList.indexOf(candidateList[0]), 1);
+		orderedList[requirements[j].sequence - 1] = candidateList[0];
+	}
+
+	var cardList2 = cardList.sort(function(a,b) { return a.generalCard.curData.defense - b.generalCard.curData.defense; });
+	for (var i = 0; i < f.nonrequirements.length; ++i) {
+		var item = f.nonrequirements[i];
+		if (item.pos == "front") {
+			orderedList[item.sequence - 1] = cardList2[cardList2.length-1];
+			cardList2.splice(cardList2.length-1, 1);
+		}
+		else {
+			orderedList[item.sequence - 1] = cardList2[0];
+			cardList2.splice(0, 1);
+		}
+	};
+
+	//cardList.str = str;
+	cl.cost = cost;
+	cl.orderedList = orderedList;
 	return (score>>0);
 };
 
