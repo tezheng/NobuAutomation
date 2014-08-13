@@ -1,6 +1,6 @@
 
 //TODO
-// 分析同组号
+// 分析出同组的号
 //
 
 var loginURL = "http://user.mobcast.jp/login?guid=ON&return_to=http%3A%2F%2Fmn.mobcast.jp%2Fmn%2F&sc=on";
@@ -686,6 +686,19 @@ var collectChakiAward = function(frame) {
 		window.setTimeout(checkPlayer, 2000);
 };
 
+var DoSwap = function(teamData, src, dst, index) {
+	window.setTimeout(function() {
+		window.console.log("DoSwap. src: "+src+". dst: "+dst);
+		if (src == dst)
+			return;
+
+		teamData.generalTap(src);
+		teamData.generalTap(src);
+		teamData.generalTap(dst);
+		teamData.generalTap(dst);
+	}, index * 2000);
+};
+
 var gotoOrganizeFormation = function(frame, nextfn)
 {
 	var checkFormation = function()
@@ -719,7 +732,7 @@ var gotoOrganizeFormation = function(frame, nextfn)
 
 var baseScoreOfFormation = function(f)
 {
-	if (formation.bean.formationCardId == 31)
+	if (f.bean.formationCardId == 31)
 		return -100;
 
 	return 0;
@@ -737,6 +750,7 @@ var autoFormation = function(frame)
 	var formationList = formation.formationList.formation;
 	for (var i = 0; i < formationList.length; i++) {
 		var formation = formationList[i];
+		var posList = formation.formationPositionList;
 
 		var data = [];
 		data.level = formation.bean.cardRank;
@@ -751,16 +765,29 @@ var autoFormation = function(frame)
 
 		data.requirements = [];
 		data.nonrequirements = [];
-		var posList = formation.formationPositionList;
+
+		var posList2 = posList.sort(function(a,b) { return b.bean.posX - a.bean.posX; });
+		var maxX = posList2[0].bean.posX;
+		var c_frontCount = 3;
+		for (var j = 0; j < posList2.length; j++) {
+			var pos = posList2[j];
+			if (pos.bean.posX > (maxX - 1000) || j < c_frontCount)
+				pos.bean["position"] = "front";
+			else
+				pos.bean["position"] = "back";
+		}
+
 		for (var j = 0; j < posList.length; j++) {
 			var pos = posList[j];
 			if (pos.bean.armType != -1) {
 				data.requirements.push({"armType":pos.bean.armType, "armTypeCode":pos.armTypeCode,
-										"sequence":pos.bean.priority, "pos":pos.bean.posX>3500?"front":"back"});
+										"posX":pos.bean.posX, "posY":pos.bean.posY,
+										"sequence":pos.bean.priority, "pos":pos.bean.position});
 			}
 			else
 			{
-				data.nonrequirements.push({"sequence":pos.bean.priority, "pos":pos.bean.posX>3500?"front":"back"});
+				data.nonrequirements.push({"posX":pos.bean.posX, "posY":pos.bean.posY,
+										   "sequence":pos.bean.priority, "pos":pos.bean.position});
 			}
 		};
 
@@ -811,16 +838,16 @@ var getCardRatio = function(card, value)
 	{
 		return 1.0;
 	}
-	else if (card.bean.generalCardId == 10327  // Name: 伊達政宗3
-		  || card.bean.generalCardId == 10488) // Name: 伊達政宗3
-	{
-		return value * 1.6;		
-	}
-	else if (card.bean.generalCardId == 10376  // Name: 柳生宗矩2
-		  || card.bean.generalCardId == 10120) // Name: 柳生宗矩1	 4517
-	{
-		return value * 1.4;
-	}
+	// else if (card.bean.generalCardId == 10327  // Name: 伊達政宗3
+	// 	  || card.bean.generalCardId == 10488) // Name: 伊達政宗3
+	// {
+	// 	return value * 1.6;		
+	// }
+	// else if (card.bean.generalCardId == 10376  // Name: 柳生宗矩2
+	// 	  || card.bean.generalCardId == 10120) // Name: 柳生宗矩1	 4517
+	// {
+	// 	return value * 1.4;
+	// }
 
 	return value;
 };
@@ -830,19 +857,24 @@ var getCardStr = function(c)
 	return c.generalCard.bean.cardName+(c.generalCard.bean.cardRank+1)+"."+(c.playerGeneralCard.bean.season+1)+"期";
 };
 
-var getSkillType = function(skill)
+var getSkillType = function(s)
 {
+	var skill = s.bean;
 	if (skill.skillTrigger == 1 || skill.skillTrigger == 3 || skill.skillTrigger == 5)
 	{
-		return "passive";
+		return "1passive";
 	}
-	else if (skill.skillTrigger = 2)
+	else if (skill.skillTrigger == 2)
 	{
-		return "reactive";
+		return "4reactive";
+	}
+	else if (skill.skillIcon == 8 || skill.skillIcon == 9 || skill.skillIcon == 12 || skill.skillIcon == 13)
+	{
+		return "3proactiveBuff";
 	}
 	else
 	{
-		return "proactive";
+		return "2proactive";
 	}
 };
 
@@ -1072,7 +1104,7 @@ var doAutoFormation = function(frame)
 
 	var checkTeamData = function ()
 	{
-		teamData = findChildScope(getRootScope(), function(childscope) {
+		var teamData = findChildScope(getRootScope(), function(childscope) {
 			return typeof childscope.tapOkButton != "undefined" &&
 				   typeof childscope.generalTap != "undefined" &&
 				   typeof childscope.abilityEntity != "undefined";
@@ -1088,15 +1120,21 @@ var doAutoFormation = function(frame)
 			card2.cardIndex = j;
 		}
 
+		var posList = [].concat(teamData.positionArray.list);
 		for (var i = 0; i < newFormation.orderedList.length; i++) {
 			var card = newFormation.orderedList[i];
-			for (var j = 0; j < teamData.positionArray.list.length; j++) {
-				var card2 = teamData.generalList.generalcards[teamData.positionArray.list[j]];
+			for (var j = 0; j < posList.length; j++) {
+				var card2 = teamData.generalList.generalcards[posList[j]];
 				if (card.generalCard.bean.generalCardId == card2.generalCard.bean.generalCardId) {
-					DoSwap(card2.cardIndex, i, (i+1));
+					var card3 = teamData.generalList.generalcards[posList[i]];
+
+					DoSwap(teamData, card2.cardIndex, i, (i+1));
 					var tmp = card2.cardIndex;
 					card2.cardIndex = i;
-					teamData.generalList.generalcards[teamData.positionArray.list[i]].cardIndex = tmp;
+					posList[card2.cardIndex] = card2.generalCard.bean.generalCardId;
+					card3.cardIndex = tmp;
+					posList[card3.cardIndex] = card3.generalCard.bean.generalCardId;
+					break;
 				}
 			}
 		};
@@ -1105,16 +1143,6 @@ var doAutoFormation = function(frame)
 			teamData.tapOkButton();
 			callForNextPlayer(frame);
 		}, ++i * 2000);
-	};
-
-	var DoSwap = function(src, dst, index) {
-		window.setTimeout(function() {
-			frame.console.log("DoSwap. src: "+src+". dst: "+dst);
-			teamData.generalTap(src);
-			teamData.generalTap(src);
-			teamData.generalTap(dst);
-			teamData.generalTap(dst);
-		}, index * 2000);
 	};
 
 	gotoOrganizeFormation(frame, setNewFormation);
@@ -1214,11 +1242,49 @@ var validateGroup = function(f, cl)
 	if (requirements.length > 0)
 		return -1;
 
+	var calcBestCandidate = function(requirement, card, candidateList)
+	{
+		var doPosition = function(newCard, target)
+		{
+			var refNew = newCard.generalCard.curData.defense * card.skillBonus;
+			var refTarget = target.generalCard.curData.defense * target.skillBonus;
+			if (requirement.pos == "front" && refNew > refTarget)
+				candidateList.unshift(card);
+			else if (requirement.pos == "back" && refNew < refTarget)
+				candidateList.unshift(card);
+		};
+
+		if (requirement.sequence < 5)
+		{
+			if (card.skillType > candidateList[0].skillType)
+			{
+				candidateList.unshift(card);
+			}
+			else if (card.skillType == candidateList[0].skillType)
+			{
+				doPosition(card, candidateList[0]);
+			}
+		}
+		else if (requirement.sequence > 4)
+		{
+			if (card.skillType < candidateList[0].skillType)
+			{
+				candidateList.unshift(card);
+			}
+			else if (card.skillType == candidateList[0].skillType)
+			{
+				doPosition(card, candidateList[0]);
+			}						
+		}
+	}
+
 	var orderedList = [];
 	requirements = [].concat(f.requirements);
-	for (var j = 0; j < requirements.length; j++) {
+	for (var j = 0; j < requirements.length; j++)
+	{
 		var candidateList = [];
-		for (var i = 0; i < cardList.length; i++) {
+		for (var i = 0; i < cardList.length; i++)
+		{
 			var card = cardList[i];
 			var generalCard = card.generalCard;
 			if ((generalCard.bean.armType == requirements[j].armType) ||
@@ -1230,31 +1296,7 @@ var validateGroup = function(f, cl)
 				}
 				else
 				{
-					if (requirements[j].sequence < 5 && card.ratio > 1.3)
-					{
-						if (generalCard.skillType == "reactive" ||
-							(generalCard.skillType == "proactiveBuff" && candidateList[0] != "reactive") ||
-							(generalCard.skillType == "proactive" && candidateList[0] != "reactive" && candidateList[0] != "proactiveBuff"))
-						{
-							if (requirements[j].pos == "front" && generalCard.curData.defense > candidateList[0].generalCard.curData.defense)
-								candidateList.unshift(card);
-							else if (requirements[j].pos == "back" && generalCard.curData.defense < candidateList[0].generalCard.curData.defense)
-								candidateList.unshift(card);
-							else if (card.ratio > candidateList[0].ratio)
-								candidateList.unshift(card);
-						}
-					}
-					else if (requirements[j].sequence > 4)
-					{
-						if (generalCard.skillType == "passive" ||
-							(generalCard.skillType == "proactive" && candidateList[0] != "passive"))
-						{
-							if (requirements[j].pos == "front" && generalCard.curData.defense > candidateList[0].generalCard.curData.defense)
-								candidateList.unshift(card);
-							else if (requirements[j].pos == "back" && generalCard.curData.defense < candidateList[0].generalCard.curData.defense)
-								candidateList.unshift(card);
-						}						
-					}
+					calcBestCandidate(requirements[j], card, candidateList);
 				}
 			}
 		}
@@ -1263,16 +1305,24 @@ var validateGroup = function(f, cl)
 	}
 
 	var cardList2 = cardList.sort(function(a,b) { return a.generalCard.curData.defense - b.generalCard.curData.defense; });
-	for (var i = 0; i < f.nonrequirements.length; ++i) {
-		var item = f.nonrequirements[i];
-		if (item.pos == "front") {
-			orderedList[item.sequence - 1] = cardList2[cardList2.length-1];
-			cardList2.splice(cardList2.length-1, 1);
+	for (var j = 0; j < f.nonrequirements.length; ++j) 
+	{
+		var item = f.nonrequirements[j];
+		var candidateList = [];
+		for (var i = 0; i < cardList2.length; i++)
+		{
+			var card = cardList2[i];
+			if (candidateList.length == 0)
+			{
+				candidateList.push(card);
+			}
+			else
+			{
+				calcBestCandidate(item, card, candidateList);
+			}
 		}
-		else {
-			orderedList[item.sequence - 1] = cardList2[0];
-			cardList2.splice(0, 1);
-		}
+		cardList2.splice(cardList2.indexOf(candidateList[0]), 1);
+		orderedList[item.sequence - 1] = candidateList[0];
 	};
 
 	//cardList.str = str;
@@ -1280,7 +1330,6 @@ var validateGroup = function(f, cl)
 	cl.orderedList = orderedList;
 	return (score>>0);
 };
-
 
 var getSeriesData = function(frame, log) {
 	var resource = 0;
@@ -1930,16 +1979,6 @@ var optimizePolitics = function(frame)
 			frame = getFrame();
 		}
 
-		var DoSwap = function(src, dst, index) {
-			window.setTimeout(function() {
-				frame.console.log("DoSwap. src: "+src+". dst: "+dst);
-				teamData.generalTap(src);
-				teamData.generalTap(src);
-				teamData.generalTap(dst);
-				teamData.generalTap(dst);
-			}, index * 2000);
-		};
-
 		var dstData = [];
 		dstData[0] = teamData.abilityEntity.politics1|0;
 		dstData[1] = teamData.abilityEntity.politics2|0;
@@ -1995,7 +2034,7 @@ var optimizePolitics = function(frame)
 						frame.console.log(window.playerTag+". Old Politics: "+politicsCards[0].politics+"("+srcBonus+")"
 										+". New Politics: "+card.politics+"("+dstBonus+")"+". ExtraCost: "+needCost);
 
-						DoSwap(politicsCards[0].currentIndex, card.currentIndex, ++swapId);
+						DoSwap(teamData, politicsCards[0].currentIndex, card.currentIndex, ++swapId);
 						costLeft -= needCost;
 
 						var tmp = politicsCards[0].currentIndex;
@@ -2102,11 +2141,14 @@ var gotoFormation = function(frame) {
 };
 
 var makeFormation = function(frame) {
-	var DoSwap = function(src, dst, index) {
+	var DoSwapInternal = function(src, dst, index) {
 		var src1 = src + 7;
 		var dst1 = dst + 7;
 		window.setTimeout(function() {
 			frame.console.log("src: "+src1+". dst: "+dst1);
+			if (src1 == dst1)
+				return;
+
 			teamData.generalTap(src1);
 			teamData.generalTap(src1);
 			teamData.generalTap(dst1);
@@ -2166,7 +2208,7 @@ var makeFormation = function(frame) {
 				var t = orderDst [j-1];
 				orderDst [j-1] = orderDst [j];
 				orderDst [j] = t;
-				DoSwap (j, j-1, index++);
+				DoSwapInternal (j, j-1, index++);
 			}
 		}
 	}
@@ -2186,7 +2228,7 @@ var makeFormation = function(frame) {
 	}
 	for (var i = stack.length-1; i >= 0; i --)
 	{
-		DoSwap (stack[i], stack[i]-1, index++);
+		DoSwapInternal (stack[i], stack[i]-1, index++);
 	}
 
 	window.setTimeout(function() {
@@ -2218,9 +2260,12 @@ var callForNextPlayer = function(frame, timeout) {
 };
 
 var autoPlay = function(nextLogin, fn, playerCB) {
-	var logArea = document.getElementById("logContent");
-	if (logArea)
-		logArea.remove();
+	var logAreaList = ["logContent", "gachaContent", "formationContent"];
+	for (var i = 0; i < logAreaList.length; i++) {
+		var logArea = document.getElementById(logAreaList[i])
+		if (logArea)
+			logArea.remove();
+	};
 
 	document.getElementById('playerIndex').value = playerIndex;
 	document.getElementById('userid').innerText = playerIndex;
