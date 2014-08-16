@@ -38,12 +38,14 @@
 		<span><button type = "button" onclick = "javascript:(gatherInfo())">Info</button></span>
 		<span><button type = "button" onclick = "javascript:(acquirePresents(getFrame()))">Present</button></span>		
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':0}))">GN</button></span>
-		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':40,'safeCollect':true}))">GN40ac</button></span>
+		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':80,'safeCollect':true}))">GN80ac</button></span>
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':0,'count':20}))">GN20nc</button></span>
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':8,'weekly':true}))">GW</button></span>
 		<span><button type = "button" onclick = "javascript:(startGacha({'type':2}))">GM</button></span>
 		<span><button type = "button" onclick = "javascript:(gotoOrganizeFormation(getFrame()))">AF</button></span>		
 		<span><button type = "button" onclick = "javascript:(optimizePolitics(getFrame()))">Po</button></span>		
+		<span><button type = "button" onclick = "javascript:(autoExploration(getFrame()))">包围网</button></span>		
+		<span><button type = "button" onclick = "javascript:(autoExploration(getFrame(),{'hard':true}))">包围网(难)</button></span>		
 		<span>-</span>
 	</div>
 	<h3>Game</h3>
@@ -55,11 +57,11 @@
 	</div>
 	<div id = "game_placeholder">
 	</div>
-	<h3>Formation</h3>
-	<div id = "formation">
-	</div>
 	<h3>Gacha</h3>
 	<div id = "gacha">
+	</div>
+	<h3>Formation</h3>
+	<div id = "formation">
 	</div>
 	<h3>Log</h3>
 	<div id = "log">
