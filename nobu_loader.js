@@ -9,6 +9,22 @@ var newUserURL = "http://gmpa.jp/regist.php?gmpa=on&input=1&back_url=http%3A%2F%
 var rootURL = "http://mn.mobcast.jp/mn/";
 var searchStr = "#/";//"?v=20140808.00.00#/";
 
+var partialList = [43, 87, 56, 73, 17, 44, 45, 69, 36, 46, 91, 105, 24, 29, 66, 84, 47, 39];
+
+var partialListIndex = 0;
+var advancePlayerByPatialList = function(step)
+{
+	if (step)
+		++partialListIndex;
+	else
+		partialListIndex += step;
+
+	if (partialListIndex != playerList.length)
+	{
+		playerIndex = partialList[partialListIndex];		
+	}
+}
+
 var getRootURL = function() {
 	return rootURL + searchStr;
 }
@@ -695,6 +711,106 @@ var collectChakiAward = function(frame) {
 // game.contentWindow.location="http://mn.mobcast.jp/mn/#/exploration"
 // var temp1 = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_adjacent != "undefined"; });
 
+var startExploration = function() {
+	window.isCheckingExplorationResult = false;
+	doStartInterval(checkExploration1, function(){advancePlayerBy(1)});
+};
+
+var checkExplorationResult = function() {
+	window.isCheckingExplorationResult = true;
+	doStartInterval(checkExploration1, function(){advancePlayerBy(1)});
+};
+
+var checkExploration1 = function(frame)
+{
+	var doCheckExploration1 = function(frame)
+	{
+		var result = findChildScope(getRootScope(), function(childscope) { return typeof childscope.isAcquisition != "undefined"; });
+		if (!result || !result.reward) {
+			var movie = findChildScope(getRootScope(), function(childscope) {
+				return typeof childscope.tap != "undefined" &&
+					   typeof childscope.movieEnd != "undefined"; 
+			});
+
+			if (movie) {
+				movie.movieEnd = true;
+				movie.tap();
+				movie.$apply();				
+			}
+
+			window.setTimeout(doCheckExploration1, 100);
+			return;
+		}
+
+		window.console.log(window.playerTag + "; 包围网战果; "+result.maxFlag+"; 剩余军粮; "+window.player.myData.eventProvisionsNum);
+		if (window.isCheckingExplorationResult)
+		{
+			window.setTimeout(function() {callForNextPlayer(frame);}, 2000);
+			return;
+		}
+
+		if (result.maxFlag < 8000 && window.player.myData.eventProvisionsNum > 40)
+		{
+			window.setTimeout(function() {
+				optimizePoliticsForExploration(getFrame());
+			}, 2000);
+		}
+	}
+
+	frame.location = "http://mn.mobcast.jp/mn/#/event/nobunagaHoui/top";
+	window.setTimeout(doCheckExploration1, 100);	
+};
+
+var optimizePoliticsForExploration = function(frame)
+{
+	var checkFormation = function() {
+		var teamData = findChildScope(getRootScope(), function(childscope) {
+			return typeof childscope.tapOkButton != "undefined" &&
+				   typeof childscope.generalTap != "undefined" &&
+				   typeof childscope.abilityEntity != "undefined";
+		});
+		if (!teamData) {
+			window.setTimeout(checkFormation, 2000);
+			return;
+		}
+		else
+		{
+			frame = getFrame();
+		}
+
+		var dstData = []; var targetPos = 0; var delay = 0;
+		dstData[0] = teamData.abilityEntity.politics1|0;
+		dstData[1] = teamData.abilityEntity.politics2|0;
+		dstData[2] = teamData.abilityEntity.politics3|0;
+		frame.console.log("Formation. Player politics: ["+dstData+"]");
+
+		if (dstData[0] < dstData[1] || dstData[0] < dstData[2])
+		{
+			if (dstData[1] > dstData[2])
+				targetPos = 8;
+			else
+				targetPos = 9;
+
+			DoSwap(teamData, 7, targetPos, ++delay);
+
+			window.setTimeout(function() {
+				frame.console.log(window.playerTag + ". Formation. Result: [" + teamData.abilityEntity.politics1 + ", "
+														 + teamData.abilityEntity.politics2 + ", "
+														 + teamData.abilityEntity.politics3 + "]");
+				teamData.tapOkButton();
+			}, ++delay * 2000);
+		}
+
+		window.setTimeout(function() {
+			autoExploration(getFrame());
+		}, ++delay * 2000);
+	}
+
+	var url = getOrganizeURL();
+	frame.location = url;
+	checkFormation(frame);
+}
+
 var autoExploration = function(frame, config)
 {
 	var c_stepList1 = [
@@ -739,21 +855,21 @@ var autoExploration = function(frame, config)
 		null
 	];
 
-	var c_stepList_new_1 = [
-		"20104",
-		"20204",
-		"20304",
-		"20305",
-		"20405",
-		"20505",
-		"20605",
-		"20604",
-		"20603",
-		"20703",
+	var c_stepList_new_2 = [
+		"30201",
+		"30302",
+		"30403",
+		"30503",
+		"30502",
+		"30602",
+		"30603",
+		"30703",
+		"30702",
+		"30802",
 		"end"
 	];
 
-	var c_stepList_new_2 = [
+	var c_stepList_new_1 = [
 		"10202",
 		"10302",
 		"10303",
@@ -771,11 +887,11 @@ var autoExploration = function(frame, config)
 	var stage = null;
 	var pt = {"gesture":{"center":{"pageX":0,"pageY":0},"deltaX":500,"deltaY":500}};
 
-	var step = 0;
+	var step = 4;
 	if (config && config.hard)
-		var stepList = c_stepList_new_2;
-	else
 		var stepList = c_stepList_new_1;
+	else
+		var stepList = c_stepList_new_2;
 
 	var originLog = frame.console.log;
 
@@ -786,7 +902,7 @@ var autoExploration = function(frame, config)
 			return;
 
 		var warResult = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_retryPopupMap != "undefined"; });
-		if (!warResult || !warResult.leftTeam || !warResult.leftTeam.matchResult)// || !warResult.walletData)
+		if (!warResult || !warResult.leftTeam || !warResult.leftTeam.matchResult || warResult.curOne)// || !warResult.walletData)
 		{
 			window.setTimeout(checkWarResult, 1000);
 			return;
@@ -807,7 +923,12 @@ var autoExploration = function(frame, config)
 			warResult.showWarMatchRounds();
 			warResult.$apply();
 			window.setTimeout(function() {
-				warResult.click_retryPopupRetry();
+				var warResult1 = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_retryPopupMap != "undefined"; });
+				if (!warResult1)
+					return;
+
+				warResult1.click_retryPopupRetry();
+				warResult1.curOne = true;
 				window.setTimeout(gotoExploration, 5000);				
 			}, 2000);
 		}
@@ -815,14 +936,17 @@ var autoExploration = function(frame, config)
 
 	var gotoExploration = function() {
 		getFrame().location = getExplorationURL();
-		checkExploration();
+
+		window.setTimeout(checkExploration, 1000);
+		checkingWarResult = true;
+		window.setTimeout(checkWarResult, 2000);
 	};
 
 	var checkExploration = function() {
 		var exploration = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_adjacent != "undefined"; });
 		if (!exploration || !exploration.userInfoData || !exploration.userInfoData.provisionAmount) {
 			window.console.log("checkExploration");
-			window.setTimeout(checkExploration, 100);
+			window.setTimeout(checkExploration, 1000);
 			return;
 		}
 
@@ -837,8 +961,17 @@ var autoExploration = function(frame, config)
 			}
 			else
 			{
-//				++step;
-				window.setTimeout(doExploration, 2000);
+				// var checkCurExploration = function() {
+				// 	var checkCurExploration1 = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_next != "undefined"; });
+				// 	if (!checkCurExploration1)
+				// 	{
+				// 		window.setTimeout(checkCurExploration, 1000);
+				// 		return;
+				// 	}
+				// 	checkCurExploration1.click_next();
+				// 	window.setTimeout(gotoExploration, 2000);
+				// }; checkCurExploration();
+				window.setTimeout(doExploration, 1000);
 			}
 		}, 2000);
 
@@ -849,23 +982,32 @@ var autoExploration = function(frame, config)
 	{
 		var warResult = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_retryPopupMap != "undefined"; });
 		if (warResult)
-		{
 			return;
-		}
 
 		var exploration = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_adjacent != "undefined"; });
+		if (!exploration)
+			return;
 
-		var nextPos = stepList[step++];
+		var step = (exploration && exploration.userInfoData) ? exploration.userInfoData.lastTurn : 0;
+		var nextPos = stepList[10-step];
+		if (nextPos == "done")
+			return;
+		else
+			stepList[10-step] = "done";
 		if (nextPos == "end")
 			return;
+		// var nextPos = stepList[step++];
+		// if (nextPos == "end")
+		// 	return;
 
 		exploration.click_pole(exploration.poleMap[nextPos]);
 		exploration.click_adjacent();
 
-		if (stepList[step] == "end")
+		if (stepList[10-step+1] == "end")
 		{
 			window.setTimeout(function() {
 				exploration.click_goalPopupYes();
+				window.setTimeout(function() {callForNextPlayer(frame);}, 2000);
 			}, 2000);
 		}
 		else
@@ -879,6 +1021,11 @@ var autoExploration = function(frame, config)
 	gotoExploration();
 }
 
+var c_leadership_ratio = 1.7;
+var c_offense_ratio = 1.4;
+var c_wisdom_ratio = 1.2;
+var c_defense_ratio = 1.0;
+
 var DoSwap = function(teamData, src, dst, index) {
 	window.setTimeout(function() {
 		window.console.log("DoSwap. src: "+src+". dst: "+dst);
@@ -890,6 +1037,11 @@ var DoSwap = function(teamData, src, dst, index) {
 		teamData.generalTap(dst);
 		teamData.generalTap(dst);
 	}, index * 2000);
+};
+
+var startOrganizeFormation = function()
+{
+	doStartInterval(gotoOrganizeFormation, function(){advancePlayerBy(1)});
 };
 
 var gotoOrganizeFormation = function(frame, nextfn, autoFormationFn)
@@ -925,10 +1077,14 @@ var gotoOrganizeFormation = function(frame, nextfn, autoFormationFn)
 
 var baseScoreOfFormation = function(f)
 {
-	if (f.bean.formationCardId == 31)
-		return -100;
+	var score = 0;
+	score += f.bean.cardRank * 200;
+	if (f.bean.formationCardId == 31)	// 墨俣一夜城
+		score -= 100;
+	else if (f.bean.formationCardId == 16) // 雁行の陣
+		score -= 100;
 
-	return 0;
+	return score;
 };
 
 var autoFormation = function(frame, fn)
@@ -1038,7 +1194,27 @@ var getCardRatio = function(card, value)
 	}
 	else if (card.bean.generalCardId == 10424) // Name: 柴田勝家4
 	{
-		return 1.6;
+		return 1.5 * value;
+	}
+	else if (card.bean.generalCardId == 10307) // 柴田勝家3	 6763
+	{
+		return 1.3 * value;
+	}
+	else if (card.bean.generalCardId == 10265) // 山本晴幸2	 4513
+	{
+		return 0.9 * value;
+	}
+	else if (card.bean.generalCardId == 10209) // 前田利家2	 5530
+	{
+		return 1.1 * value;
+	}
+	else if (card.bean.generalCardId == 10311)	 // 	加藤清正3	 6974
+	{
+		return 1.4 * value;
+	}
+	else if (card.bean.generalCardId == 10216)	 // 	後藤基次2	 5635)
+	{
+		return 1.4 * value;
 	}
 	// else if (card.bean.generalCardId == 10327  // Name: 伊達政宗3
 	// 	  || card.bean.generalCardId == 10488) // Name: 伊達政宗3
@@ -1081,24 +1257,41 @@ var getSkillType = function(s)
 	}
 };
 
+// effectType
+//  0~5 单体 低~x大
+//  6~11 单连 低~x大
+//  12~17 全体 低~x大
+//  18~23 全连 低~x大
+//  24~29 随机 低~x大
+//  30~35 反击 低~x大
+//  36~41 追击 低~x大
+// skillCondition
+//  1: 胜机中
 var getSkillBonus = function(s)
 {
 	var c_critical_rate = 0.2;
 	var c_win_chance = 0.1;
 
-	var ratio = 1.0;
 	var skill = s.bean;
+	var ratio = 1.0 + (skill.effectType % 6) * 0.15;
 
+	// 随机
+	if (skill.effectType >= 24 && skill.effectType < 30)
+	{
+		ratio *= 1.3;
+	}
+
+	// 胜机中
 	if (skill.skillCondition == 1)
 	{
-		ratio = 0.3;
+		ratio *= 0.6;
 	}
 
 	if (skill.skillTrigger == 1 || skill.skillTrigger == 3) // 味方攻击/被攻击
 	{
-		if (skill.skillIcon == 8 || skill.skillIcon == 12)
+		if (skill.skillIcon == 8 || skill.skillIcon == 10 || skill.skillIcon == 12)
 			ratio += 0.2 + skill.exeRate / 1600;	// buff味方防御/debuff敌方攻击
-		else if (skill.skillIcon == 9 || skill.skillIcon == 13)
+		else if (skill.skillIcon == 9 || skill.skillIcon == 11 || skill.skillIcon == 13)
 			ratio += 0.3 + skill.exeRate / 1600;	// buff味方攻击/debuff敌方防御
 		else
 			ratio += 0.5 + skill.exeRate / 800;		// attack
@@ -1116,21 +1309,21 @@ var getSkillBonus = function(s)
 	}
 	else if (skill.skillTrigger == 7) // 自军胜机中
 	{
-		ratio = 0.4;
-		if (skill.skillIcon == 8 || skill.skillIcon == 9 || skill.skillIcon == 12 || skill.skillIcon == 13)
+		ratio *= 0.6;
+		if (skill.skillIcon >= 8 && skill.skillIcon <= 13)
 		{
-			ratio *= 0.9;
+			ratio *= 0.8;
 		}
 	}
 	else
 	{
-		if (skill.skillIcon == 8 || skill.skillIcon == 9 || skill.skillIcon == 12 || skill.skillIcon == 13)
+		if (skill.skillIcon >= 8 && skill.skillIcon <= 13)
 		{
-			ratio *= 0.9;
+			ratio *= 0.8;
 		}
 		else
 		{
-			var multiplier = (skill.conditionParam1 != 0) ? 0.33 : 1;
+			var multiplier = (skill.conditionParam1 != 0 && skill.skillCondition != 8) ? 0.25 : 1;
 			ratio += skill.exeRate * multiplier / 800;			
 		}
 	}
@@ -1181,9 +1374,13 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 
 		var collectCards = function(card, ratio, list1, list2)
 		{
+			var data = card.generalCard.curData;
 			card.skillType = getSkillType(card.generalCard.skillList[0]);
 			card.skillBonus = getSkillBonus(card.generalCard.skillList[0]);
 			card.ratio = getCardRatio(card.generalCard, ratio) * card.skillBonus;
+			card.power = (data.leadership * c_leadership_ratio + data.offense * c_offense_ratio +
+						  data.wisdom * c_wisdom_ratio + data.defense * c_defense_ratio) * card.ratio;
+
 			list1.push(card);
 			if (list2)
 				list2.push(card);
@@ -1193,10 +1390,13 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 		{
 			collectCards(card, 2.0, primaryList, allList);
 		}
-		else if (shouldOn(card.generalCard, season, seasonData, 2)
-			  || shouldOn(card.generalCard, season, seasonData, 3))
+		else if (shouldOn(card.generalCard, season, seasonData, 2))
+		{
+			collectCards(card, 1.7, secondaryList, allList);
+		}
+		else if (shouldOn(card.generalCard, season, seasonData, 3))
 		{ 
-			collectCards(card, 1.5, secondaryList, allList);
+			collectCards(card, 1.4, secondaryList, allList);
 		}
 		else if ((generalCard.curData.offense > 90 || generalCard.curData.offense > 90) &&
 				 (generalCard.curData.offense + generalCard.curData.leadership > 150))
@@ -1210,7 +1410,7 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 		}
 		else
 		{
-			card.ratio = 0.8;
+			collectCards(card, 0.9, subsitutionList, allList);
 			otherList.push(card);
 		}
 	}
@@ -1237,7 +1437,7 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 		var toAdd = 12 - allList.length;
 		for (var i = 0; i < toAdd; i++) {
 			allList.push(otherList2[i]);
-			frame.console.log("排阵.补充大将:"+getCardStr(otherList2[i]));
+			frame.console.log("排阵.补充大将:"+getCardStr(otherList2[i])+". Ratio:"+otherList2[i].ratio);
 		};
 	}
 
@@ -1473,7 +1673,7 @@ var validateGroup = function(f, cl)
 		wisdom += familyBonus * item.ratio;
 	}
 
-	var score = f.baseScore + leadership * 1.7 + offense * 1.4 + wisdom * 1.2 + defense;
+	var score = f.baseScore + leadership * c_leadership_ratio + offense * c_offense_ratio + wisdom * c_wisdom_ratio + defense * c_defense_ratio;
 	//window.console.log("formation: " + f.name + "score: "+ score + ". cost: " + cost + ". " + str);// + ". 内政: "+f.politicsStr);
 
 	if (cost > f.maxCost)
@@ -2305,7 +2505,7 @@ var optimizePolitics = function(frame)
 				dstBonus = (familyCountSrc < familyCountDst) ? 3 : 0;
 				if (card.politics + dstBonus > politicsCards[0].politics + srcBonus) {
 					var needCost = card.generalCard.bean.cost - politicsCards[0].generalCard.bean.cost;
-					if (needCost < costLeft) {
+					if (needCost <=	 costLeft) {
 						frame.console.log(window.playerTag+". Old Politics: "+politicsCards[0].politics+"("+srcBonus+")"
 										+". New Politics: "+card.politics+"("+dstBonus+")"+". ExtraCost: "+needCost);
 
@@ -2318,6 +2518,11 @@ var optimizePolitics = function(frame)
 
 						politicsCards[0] = card;
 						politicsCards = politicsCards.sort(function(a,b) { return a.politics - b.politics; });						
+					}
+					else
+					{
+						frame.console.log(window.playerTag+". 内政. 点数不足!"+". Old Politics: "+politicsCards[0].politics+"("+srcBonus+")"
+										+". New Politics: "+card.politics+"("+dstBonus+")"+". ExtraCost: "+needCost);
 					}
 				}
 			}
@@ -2756,7 +2961,7 @@ var getSeasonType = function(card) {
 var notInBadShape = function(card, season, seasonData)
 {
 	var refData = card.growth.bean.offenses.split(',');
-	return (season < 10) && (refData[season]/refData[0] > 0.9);
+	return (season < 10) && (refData[season]/refData[0] > 0.8);
 }
 
 var isInGoodShape = function(card, season, seasonData)
@@ -2816,6 +3021,12 @@ var shouldOnIfInGoodShape = function(card)
 		|| card.bean.generalCardId == 10209	 // 	前田利家2	 5530
 		|| card.bean.generalCardId == 10229	 // 	島津歳久3	 5080
 		|| card.bean.generalCardId == 10120	 // 	柳生宗矩1	 4517
+		|| card.bean.generalCardId == 10172	 // 	山県昌景3	 7056
+		|| card.bean.generalCardId == 10311	 // 	加藤清正3	 6974
+		|| card.bean.generalCardId == 10307	 // 	柴田勝家3	 6763
+		|| card.bean.generalCardId == 10315	 // 	本多忠勝3	 6730
+		|| card.bean.generalCardId == 10333	 // 	最上義光3	 6672
+		|| card.bean.generalCardId == 10532	 // 	六角義賢3	 6135
 	;
 };
 
@@ -2826,6 +3037,7 @@ var keepForFuture = function(card)
 		|| card.bean.generalCardId == 10209	 // 	前田利家2	 5530
 		|| card.bean.generalCardId == 10229	 // 	島津歳久3	 5080
 		|| card.bean.generalCardId == 10539 // Name: 井伊直孝3
+		|| card.bean.generalCardId == 10248 // Name: 藤堂高虎3 
 	;
 };
 
@@ -2848,15 +3060,9 @@ var isTopClassCard = function(card)
 		|| card.bean.generalCardId == 10330 // Name: 下間頼廉3
 		|| card.bean.generalCardId == 10339	 // 	村上義清3 7748
 		|| card.bean.generalCardId == 10321	 // 	吉川元春3	 7155
-		|| card.bean.generalCardId == 10172	 // 	山県昌景3	 7056
-		|| card.bean.generalCardId == 10311	 // 	加藤清正3	 6974
-		|| card.bean.generalCardId == 10307	 // 	柴田勝家3	 6763
-		|| card.bean.generalCardId == 10315	 // 	本多忠勝3	 6730
-		|| card.bean.generalCardId == 10333	 // 	最上義光3	 6672
 		|| card.bean.generalCardId == 10308	 // 	滝川一益3	 6495
 		|| card.bean.generalCardId == 10319	 // 	北条綱成3	 6468
 		|| card.bean.generalCardId == 10231	 // 	新納忠元3	 6144
-		|| card.bean.generalCardId == 10532	 // 	六角義賢3	 6135
 		|| card.bean.generalCardId == 10337	 // 	斎藤道三3	 6107
 		|| card.bean.generalCardId == 10238	 // 	安東愛季3	 5939
 		|| card.bean.generalCardId == 10175	 // 	立花宗茂3	 5710
@@ -2867,10 +3073,12 @@ var isTopClassCard = function(card)
 		|| card.bean.generalCardId == 10357	 // 	鈴木重秀3	 4860
 		|| card.bean.generalCardId == 10163	 // 	江里口信常3 4731
 		|| card.bean.generalCardId == 10313	 // 	大谷吉継3	 4524
+		|| card.bean.generalCardId == 10248 // Name: 藤堂高虎3 
 
 		|| card.bean.generalCardId == 10306	 // 	織田信長3	 5155
-		|| card.bean.generalCardId == 10318	 // 	北条氏康3	 3632
-		|| card.bean.generalCardId == 10173	 // 	上杉謙信3	 3571
+
+//		|| card.bean.generalCardId == 10318	 // 	北条氏康3	 3632
+//		|| card.bean.generalCardId == 10173	 // 	上杉謙信3	 3571
 
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
