@@ -87,7 +87,7 @@ var endPlayer = 0;
 var playerList = [];
 var password = "tzh20080426";
 var playerCount = 18;
-var playerCountYahoo = 140;
+var playerCountYahoo = 136;
 
 var getTodayString = function() {
 	var date = new Date();
@@ -749,11 +749,15 @@ var checkExploration1 = function(frame)
 			return;
 		}
 
-		if (result.maxFlag < 8000 && window.player.myData.eventProvisionsNum > 40)
+		if (result.maxFlag < 9500 && window.player.myData.eventProvisionsNum >= 15)
 		{
 			window.setTimeout(function() {
 				optimizePoliticsForExploration(getFrame());
 			}, 2000);
+		}
+		else
+		{
+			callForNextPlayer(frame);
 		}
 	}
 
@@ -778,11 +782,23 @@ var optimizePoliticsForExploration = function(frame)
 			frame = getFrame();
 		}
 
+		var power = (teamData.abilityEntity.leaderships * 1.2 + teamData.abilityEntity.offenses) | 0;
 		var dstData = []; var targetPos = 0; var delay = 0;
 		dstData[0] = teamData.abilityEntity.politics1|0;
 		dstData[1] = teamData.abilityEntity.politics2|0;
 		dstData[2] = teamData.abilityEntity.politics3|0;
-		frame.console.log("Formation. Player politics: ["+dstData+"]");
+		frame.console.log(window.playerTag+"; 包围网内政; ["+dstData+"]");
+		frame.console.log(window.playerTag+"; 包围网战力; " + power
+						+ ";统:" + teamData.abilityEntity.leaderships + "|"
+						+ "攻:" + teamData.abilityEntity.offenses + "|"
+						+ "防:" + teamData.abilityEntity.defenses + "|"
+						+ "知:" + teamData.abilityEntity.wisdoms);
+
+		if (power < 1600)
+		{
+			callForNextPlayer(frame);
+			return;
+		}
 
 		if (dstData[0] < dstData[1] || dstData[0] < dstData[2])
 		{
@@ -856,16 +872,30 @@ var autoExploration = function(frame, config)
 	];
 
 	var c_stepList_new_2 = [
-		"30201",
-		"30302",
-		"30403",
-		"30503",
-		"30502",
-		"30602",
-		"30603",
-		"30703",
-		"30702",
-		"30802",
+		"60402",
+		"60401",
+		"60301",
+		"60201",
+		"60202",
+		"60203",
+		"60204",
+		"60205",
+		"60105",
+		"60104",
+		"end"
+	];
+
+	var c_stepList_new_3 = [
+		"50302",
+		"50402",
+		"50502",
+		"50503",
+		"50603",
+		"50703",
+		"50702",
+		"50701",
+		"50601",
+		"50602",
 		"end"
 	];
 
@@ -882,7 +912,6 @@ var autoExploration = function(frame, config)
 		"10401",
 		"end"
 	];
-
 
 	var stage = null;
 	var pt = {"gesture":{"center":{"pageX":0,"pageY":0},"deltaX":500,"deltaY":500}};
@@ -912,13 +941,12 @@ var autoExploration = function(frame, config)
 			checkingWarResult = false;
 		}
 
-		if (stepList != c_stepList_new_2 || step < 3)
-		{
-			--step;
-			givingUp = true;
-			warResult.click_retryPopupMap();
-		}
-		else
+		// if (step > 7)
+		// {
+		// 	givingUp = true;
+		// 	warResult.click_retryPopupMap();
+		// }
+		// else
 		{
 			warResult.showWarMatchRounds();
 			warResult.$apply();
@@ -988,7 +1016,7 @@ var autoExploration = function(frame, config)
 		if (!exploration)
 			return;
 
-		var step = (exploration && exploration.userInfoData) ? exploration.userInfoData.lastTurn : 0;
+		step = (exploration && exploration.userInfoData) ? exploration.userInfoData.lastTurn : 0;
 		var nextPos = stepList[10-step];
 		if (nextPos == "done")
 			return;
@@ -1007,7 +1035,18 @@ var autoExploration = function(frame, config)
 		{
 			window.setTimeout(function() {
 				exploration.click_goalPopupYes();
-				window.setTimeout(function() {callForNextPlayer(frame);}, 2000);
+				var checkCurExplorationResult = function() {
+					var curExplorationResult = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_next != "undefined"; });
+					if (!curExplorationResult || !curExplorationResult.currentFlag)
+					{
+						window.setTimeout(checkCurExplorationResult, 1000);
+						return;
+					}
+
+					frame.console.log(window.playerTag+"; 包围网结果; "+curExplorationResult.currentFlag);
+					curExplorationResult.click_next();
+					window.setTimeout(function() {callForNextPlayer(frame);}, 2000);
+				}; checkCurExplorationResult();
 			}, 2000);
 		}
 		else
@@ -1312,7 +1351,7 @@ var getSkillBonus = function(s)
 		ratio *= 0.6;
 		if (skill.skillIcon >= 8 && skill.skillIcon <= 13)
 		{
-			ratio *= 0.8;
+			//ratio *= 0.8;
 		}
 	}
 	else
@@ -2214,7 +2253,7 @@ var getPoliticsData = function(frame, log) {
 				var season = card.playerGeneralCard.bean.season;
 				var politicses = card.generalCard.bean.politicses.split(',');
 				if ((isHighPolitics(card.generalCard) || isMediumPolitics(card.generalCard)) &&
-					(politicses[season+1] > politics[0] || window.playerInfo.cur.politics.length > 0))
+					(politicses[season+1] > politics[0] || politicses[season+1] > 90))
 				{
 					recordCard(card, season+1, window.playerInfo.nxt.politics, politicses[season+1]);
 				}
@@ -2678,6 +2717,12 @@ var makeFormation = function(frame) {
 	frame.console.log("Formation. OrderSrc: " + orderSrc);
 	frame.console.log("Formation. OrderDst: " + orderDst);
 
+	if (orderSrc[0] == orderDst[0] && orderSrc[1] == orderDst[1] && orderSrc[2] == orderDst[2])
+	{
+		callForNextPlayer(frame);
+		return;		
+	}
+
 	var index = 0;
 	for (var i = 0; i < orderDst.length; i ++)
 	{
@@ -3009,7 +3054,6 @@ var shouldAlwaysOn = function(card)
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
 //		|| card.bean.generalCardId == 
-		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	 8178
 	;
 };
 
@@ -3027,17 +3071,19 @@ var shouldOnIfInGoodShape = function(card)
 		|| card.bean.generalCardId == 10315	 // 	本多忠勝3	 6730
 		|| card.bean.generalCardId == 10333	 // 	最上義光3	 6672
 		|| card.bean.generalCardId == 10532	 // 	六角義賢3	 6135
+		|| card.bean.generalCardId == 10108 // Name: 原虎胤3
 	;
 };
 
 var keepForFuture = function(card)
 {
-	return card.bean.cardRank > 2 || isTopClassCard(card) || shouldAlwaysOn(card)
+	return card.bean.cardRank > 2 || isTopClassCard(card) || shouldAlwaysOn(card) || shouldOnIfInGoodShape(card)
 		|| card.bean.generalCardId == 10228	 // 	島津貴久2	 5720
 		|| card.bean.generalCardId == 10209	 // 	前田利家2	 5530
 		|| card.bean.generalCardId == 10229	 // 	島津歳久3	 5080
 		|| card.bean.generalCardId == 10539 // Name: 井伊直孝3
 		|| card.bean.generalCardId == 10248 // Name: 藤堂高虎3 
+		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	 8178
 	;
 };
 
@@ -3056,7 +3102,9 @@ var isTopClassCard = function(card)
 		|| card.bean.generalCardId == 10267	 // 	服部正成2	 4747
 		|| card.bean.generalCardId == 10265	 // 	山本晴幸2	 4513
 		|| card.bean.generalCardId == 10254	 // 	長宗我部国親2 4022
+		|| card.bean.generalCardId == 10539 // Name: 井伊直孝3
 
+		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	 8178
 		|| card.bean.generalCardId == 10330 // Name: 下間頼廉3
 		|| card.bean.generalCardId == 10339	 // 	村上義清3 7748
 		|| card.bean.generalCardId == 10321	 // 	吉川元春3	 7155
