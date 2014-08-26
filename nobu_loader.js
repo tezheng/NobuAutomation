@@ -749,7 +749,7 @@ var checkExploration1 = function(frame)
 			return;
 		}
 
-		if (result.maxFlag < 9500 && window.player.myData.eventProvisionsNum >= 15)
+		if (result.maxFlag < 7500 && window.player.myData.eventProvisionsNum >= 20)
 		{
 			window.setTimeout(function() {
 				optimizePoliticsForExploration(getFrame());
@@ -794,11 +794,11 @@ var optimizePoliticsForExploration = function(frame)
 						+ "防:" + teamData.abilityEntity.defenses + "|"
 						+ "知:" + teamData.abilityEntity.wisdoms);
 
-		if (power < 1600)
-		{
-			callForNextPlayer(frame);
-			return;
-		}
+		// if (power < 1600)
+		// {
+		// 	callForNextPlayer(frame);
+		// 	return;
+		// }
 
 		if (dstData[0] < dstData[1] || dstData[0] < dstData[2])
 		{
@@ -827,105 +827,32 @@ var optimizePoliticsForExploration = function(frame)
 	checkFormation(frame);
 }
 
+var explorationStep = 0;
 var autoExploration = function(frame, config)
 {
-	var c_stepList1 = [
-		{"pageX":120,"pageY":200},
-		{"pageX":170,"pageY":200},
-		{"pageX":170,"pageY":250},
-		{"pageX":220,"pageY":250},
-		{"pageX":220,"pageY":300},
-		{"pageX":270,"pageY":300},
-		{"pageX":270,"pageY":250},
-		{"pageX":270,"pageY":200},
-		{"pageX":220,"pageY":200},
-		{"pageX":220,"pageY":150},
-		null
-	];
-
-	var c_stepList2 = [
-		{"pageX":120,"pageY":200},
-		{"pageX":170,"pageY":200},
-		{"pageX":170,"pageY":250},
-		{"pageX":220,"pageY":250},
-		{"pageX":270,"pageY":250},
-		{"pageX":270,"pageY":300},
-		{"pageX":270,"pageY":250},
-		{"pageX":220,"pageY":250},
-		{"pageX":220,"pageY":200},
-		{"pageX":220,"pageY":150},
-		null
-	];
-
-	var c_stepList3 = [
-		{"pageX":120,"pageY":200},
-		{"pageX":170,"pageY":200},
-		{"pageX":170,"pageY":250},
-		{"pageX":170,"pageY":300},
-		{"pageX":220,"pageY":300},
-		{"pageX":270,"pageY":300},
-		{"pageX":270,"pageY":250},
-		{"pageX":270,"pageY":200},
-		{"pageX":220,"pageY":200},
-		{"pageX":220,"pageY":150},
-		null
-	];
-
 	var c_stepList_new_2 = [
-		"60402",
-		"60401",
-		"60301",
-		"60201",
-		"60202",
-		"60203",
-		"60204",
-		"60205",
-		"60105",
-		"60104",
+		"70204",
+		"70304",
+		"70305",
+		"70205",
+		"70305",
+		"70405",
+		"70404",
+		"70403",
+		"70303",
+		"end",
 		"end"
 	];
 
-	var c_stepList_new_3 = [
-		"50302",
-		"50402",
-		"50502",
-		"50503",
-		"50603",
-		"50703",
-		"50702",
-		"50701",
-		"50601",
-		"50602",
-		"end"
-	];
+	explorationStep = -1;
 
-	var c_stepList_new_1 = [
-		"10202",
-		"10302",
-		"10303",
-		"10304",
-		"10404",
-		"10504",
-		"10503",
-		"10502",
-		"10402",
-		"10401",
-		"end"
-	];
-
-	var stage = null;
-	var pt = {"gesture":{"center":{"pageX":0,"pageY":0},"deltaX":500,"deltaY":500}};
-
-	var step = 4;
 	if (config && config.hard)
 		var stepList = c_stepList_new_1;
 	else
 		var stepList = c_stepList_new_2;
 
-	var originLog = frame.console.log;
-
 	var givingUp = false;
-	var checkingWarResult = false;
+	var checkingWarResult = false; var warResultId = 0;
 	var checkWarResult = function() {
 		if (!checkingWarResult)
 			return;
@@ -933,7 +860,8 @@ var autoExploration = function(frame, config)
 		var warResult = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_retryPopupMap != "undefined"; });
 		if (!warResult || !warResult.leftTeam || !warResult.leftTeam.matchResult || warResult.curOne)// || !warResult.walletData)
 		{
-			window.setTimeout(checkWarResult, 1000);
+			window.clearTimeout(warResultId);
+			warResultId = window.setTimeout(checkWarResult, 1000);
 			return;
 		}
 		else
@@ -941,12 +869,12 @@ var autoExploration = function(frame, config)
 			checkingWarResult = false;
 		}
 
-		// if (step > 7)
-		// {
-		// 	givingUp = true;
-		// 	warResult.click_retryPopupMap();
-		// }
-		// else
+		if (explorationStep > 9)
+		{
+			givingUp = true;
+			warResult.click_retryPopupMap();
+		}
+		else
 		{
 			warResult.showWarMatchRounds();
 			warResult.$apply();
@@ -967,7 +895,7 @@ var autoExploration = function(frame, config)
 
 		window.setTimeout(checkExploration, 1000);
 		checkingWarResult = true;
-		window.setTimeout(checkWarResult, 2000);
+		checkWarResult();
 	};
 
 	var checkExploration = function() {
@@ -981,6 +909,9 @@ var autoExploration = function(frame, config)
 		window.setTimeout(function() {
 			if (givingUp)
 			{
+				checkWarResult = false;
+				window.clearTimeout(warResultId);
+				givingUp = false;
 				exploration.click_giveupPopupYes();
 
 				window.setTimeout(function() {
@@ -989,16 +920,6 @@ var autoExploration = function(frame, config)
 			}
 			else
 			{
-				// var checkCurExploration = function() {
-				// 	var checkCurExploration1 = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_next != "undefined"; });
-				// 	if (!checkCurExploration1)
-				// 	{
-				// 		window.setTimeout(checkCurExploration, 1000);
-				// 		return;
-				// 	}
-				// 	checkCurExploration1.click_next();
-				// 	window.setTimeout(gotoExploration, 2000);
-				// }; checkCurExploration();
 				window.setTimeout(doExploration, 1000);
 			}
 		}, 2000);
@@ -1016,7 +937,32 @@ var autoExploration = function(frame, config)
 		if (!exploration)
 			return;
 
-		step = (exploration && exploration.userInfoData) ? exploration.userInfoData.lastTurn : 0;
+		var step = (exploration && exploration.userInfoData) ? exploration.userInfoData.lastTurn : 0;
+		if (step == explorationStep)
+		{
+			if (checkingWarResult == false)
+			{
+				checkingWarResult = true;
+				checkWarResult();
+			}
+			return;
+		}
+		else
+		{
+			explorationStep = step;
+		}
+
+		// for the 6th round
+		if (step <= 9 && exploration.userInfoData.currentFlag < 430)
+		{
+			window.console.log("Giveup step: "+step);
+			givingUp = true;
+			window.setTimeout(gotoExploration, 2000);
+			return;
+		}
+
+		window.console.log("Current step: "+step);
+
 		var nextPos = stepList[10-step];
 		if (nextPos == "done")
 			return;
@@ -1029,6 +975,7 @@ var autoExploration = function(frame, config)
 		// 	return;
 
 		exploration.click_pole(exploration.poleMap[nextPos]);
+		exploration.$apply();
 		exploration.click_adjacent();
 
 		if (stepList[10-step+1] == "end")
@@ -1141,6 +1088,7 @@ var autoFormation = function(frame, fn)
 		var posList = formation.formationPositionList;
 
 		var data = [];
+		data.extraCost = formation.bean.additionalCost;
 		data.level = formation.bean.cardRank;
 		data.Id = formation.bean.formationCardId;
 		data.name = formation.bean.formationName;
@@ -1382,7 +1330,7 @@ var logFormationScoreStr = function(f, logArea, nextSeason)
 		var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1};
 		dataList.push(data);
 	}
-	var strPrefix = "战力: "+c_redPre+f.score+c_redSuf+"."+f.name+". 消耗: "+f.cost+". 内政: "+f.politicsStr+". ";
+	var strPrefix = "战力: "+c_redPre+f.score+c_redSuf+"."+f.name+". 最大: "+f.maxCost+". 消耗: "+f.cost+". 内政: "+f.politicsStr+". ";
 	appendLog(addCategoryHtml(strPrefix, dataList), logArea);
 };
 
@@ -1508,7 +1456,7 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 	for (var key in priFormation)
 	{
 		var f = priFormation[key];
-		f.maxCost = maxCost;
+		f.maxCost = maxCost + f.extraCost;
 		fcount += calcFormation(f);
 
 		if (f.score > score) {
@@ -1522,7 +1470,7 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 		for (var key in secFormation)
 		{
 			var f = secFormation[key];
-			f.maxCost = maxCost;
+			f.maxCost = maxCost + f.extraCost;
 			fcount += calcFormation(f);
 
 			if (f.score > score) {
@@ -2241,11 +2189,12 @@ var getPoliticsData = function(frame, log) {
 
 			if (card.generalCard.bean.cardRank >=3)
 			{
+				var expired = (season < 10 && seasonData[season] == "2");
 				var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1,"onduty":(i < 10)
-						   ,"expired":(season < 10 && seasonData[season] == "2")};
+						   ,"expired":expired};
 				if (i < 10)
 					window.playerInfo.goldOn.push(data);
-				else
+				else if (!expired)
 					window.playerInfo.goldOff.push(data);					
 			}
 
@@ -2270,11 +2219,11 @@ var getPoliticsData = function(frame, log) {
 		log += ";" + (window.playerInfo.normalText("替补内政", window.playerInfo.nxt.politics));
 		log += ";" + (window.playerInfo.normalText(window.playerInfo.cur.politics.name, window.playerInfo.cur.politics));
 		log += ";" + (window.playerInfo.normalText("参战即将过期", window.playerInfo.nxt.duty));
-		log += ";" + (window.playerInfo.normalText("当前替补过期", window.playerInfo.cur.bench));
-		log += ";" + (window.playerInfo.normalText("替补即将过期", window.playerInfo.nxt.bench));
 		log += ";" + (window.playerInfo.normalText("可替换武将", window.playerInfo.droppable));
 		log += ";" + (window.playerInfo.normalText("四星参战", window.playerInfo.goldOn));
 		log += ";" + (window.playerInfo.normalText("四星替补", window.playerInfo.goldOff));
+		log += ";" + (window.playerInfo.normalText("当前替补过期", window.playerInfo.cur.bench));
+		log += ";" + (window.playerInfo.normalText("替补即将过期", window.playerInfo.nxt.bench));
 
 		// logout
 		frame.logDone = true; frame.logtxt = log;
@@ -3117,8 +3066,9 @@ var isTopClassCard = function(card)
 		|| card.bean.generalCardId == 10338	 // 	斎藤義龍3	 5451
 		|| card.bean.generalCardId == 10343	 // 	松永久秀3	 5420
 		|| card.bean.generalCardId == 10252	 // 	十河一存3	 5332
-		|| card.bean.generalCardId == 10233	 // 	伊達成実3	 5106
-		|| card.bean.generalCardId == 10357	 // 	鈴木重秀3	 4860
+		|| card.bean.generalCardId == 10233	 // 	伊達成実3	 6099
+		|| card.bean.generalCardId == 10357	 // 	鈴木重秀3	 5210
+		|| card.bean.generalCardId == 10235	 // 	鈴木重意3	 4658
 		|| card.bean.generalCardId == 10163	 // 	江里口信常3 4731
 		|| card.bean.generalCardId == 10313	 // 	大谷吉継3	 4524
 		|| card.bean.generalCardId == 10248 // Name: 藤堂高虎3 
@@ -3226,7 +3176,7 @@ var isSuperbBronze = function(card) {
 		|| card.bean.generalCardId == 10213 // Name: 福島正則2
 		|| card.bean.generalCardId == 10258	 // 	龍造寺隆信2
 
-//		|| card.bean.generalCardId == 10210 // Name: 織田信秀2
+		|| card.bean.generalCardId == 10210 // Name: 織田信秀2
 	;
 };
 
@@ -3257,7 +3207,8 @@ var isCrappySilver = function(card) {
 		|| card.bean.generalCardId == 10112 // Name: 佐々成政3
 		|| card.bean.generalCardId == 10336 // Name: 太原雪斎3
 		|| card.bean.generalCardId == 10201 // Name: 長尾政景3
-		|| card.bean.generalCardId == 10140 // Name: 鈴木元信3 
+		|| card.bean.generalCardId == 10140 // Name: 鈴木元信3
+		|| card.bean.generalCardId == 10310 // Name: 蒲生氏郷3
 	;
 }
 var isLowendBronze = function(card) {
@@ -3577,7 +3528,15 @@ var collectGacha = function(frame, config)
 								var str = card2.generalCard.bean.cardName
 										  +((card2.generalCard.bean.cardRank|0)+1)
 										  +"."+((card2.playerGeneralCard.bean.season|0)+1)+"期|";
-								appendLog(str, gachaArea);									
+								appendLog(str, gachaArea);
+
+								if (!isPoliticsCard(card2) && !keepForFuture(card2))		
+								{
+									frame.console.log(window.playerTag + ".Replace. "+card.bean.cardName+"=>"+card2.generalCard.bean.cardName);
+									gacha.setSelectDischargeCardIndex(card2.replaceIndex);
+									gacha.gotoPageResult();
+									gotoNextStep();	
+								}					
 							}
 						}
 
