@@ -749,7 +749,7 @@ var checkExploration1 = function(frame)
 			return;
 		}
 
-		if (result.maxFlag < 7500 && window.player.myData.eventProvisionsNum >= 20)
+		if (result.maxFlag < 4000 && window.player.myData.eventProvisionsNum > 19)
 		{
 			window.setTimeout(function() {
 				optimizePoliticsForExploration(getFrame());
@@ -831,16 +831,16 @@ var explorationStep = 0;
 var autoExploration = function(frame, config)
 {
 	var c_stepList_new_2 = [
-		"70204",
-		"70304",
-		"70305",
-		"70205",
-		"70305",
-		"70405",
-		"70404",
-		"70403",
-		"70303",
 		"end",
+		"end",
+		"end",
+		"end",
+		"end",
+		"end",
+		"end",
+		"end",
+		"80302",
+		"80301",
 		"end"
 	];
 
@@ -869,12 +869,12 @@ var autoExploration = function(frame, config)
 			checkingWarResult = false;
 		}
 
-		if (explorationStep > 9)
-		{
-			givingUp = true;
-			warResult.click_retryPopupMap();
-		}
-		else
+		// if (explorationStep > 9)
+		// {
+		// 	givingUp = true;
+		// 	warResult.click_retryPopupMap();
+		// }
+		// else
 		{
 			warResult.showWarMatchRounds();
 			warResult.$apply();
@@ -882,6 +882,12 @@ var autoExploration = function(frame, config)
 				var warResult1 = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_retryPopupMap != "undefined"; });
 				if (!warResult1)
 					return;
+
+				if (!warResult1.useItem)
+				{
+					callForNextPlayer(frame);
+					return;
+				}
 
 				warResult1.click_retryPopupRetry();
 				warResult1.curOne = true;
@@ -950,15 +956,6 @@ var autoExploration = function(frame, config)
 		else
 		{
 			explorationStep = step;
-		}
-
-		// for the 6th round
-		if (step <= 9 && exploration.userInfoData.currentFlag < 430)
-		{
-			window.console.log("Giveup step: "+step);
-			givingUp = true;
-			window.setTimeout(gotoExploration, 2000);
-			return;
 		}
 
 		window.console.log("Current step: "+step);
