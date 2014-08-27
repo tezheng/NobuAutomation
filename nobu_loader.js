@@ -749,7 +749,7 @@ var checkExploration1 = function(frame)
 			return;
 		}
 
-		if (result.maxFlag < 4000 && window.player.myData.eventProvisionsNum > 19)
+		if (result.maxFlag < 4000 && window.player.myData.eventProvisionsNum > 0)
 		{
 			window.setTimeout(function() {
 				optimizePoliticsForExploration(getFrame());
@@ -2894,6 +2894,10 @@ var doGacha = function(frame, config) {
 	if (gachaArea)
 		gachaArea.remove();
 
+	var gachaResultArea = document.getElementById("gachaResultContent");
+	if (gachaResultArea)
+		gachaResultArea.remove();
+
 	var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 	if ((config.type == 2 && gacha.walletData.gameGold < 30)
 		|| (config.type == 0 && gacha.walletData.point < 100)
@@ -3469,6 +3473,14 @@ var collectGacha = function(frame, config)
 				elem.appendChild(gachaArea);
 				gachaArea = document.getElementById("gachaContent");
 
+				var gachaResultArea = document.getElementById("gachaResultContent");
+				if (gachaResultArea)
+					gachaResultArea.remove();
+				gachaResultArea = document.createElement('div');
+				gachaResultArea.id = "gachaResultContent";
+				window.document.getElementById("gachaResult").appendChild(gachaResultArea);
+				gachaResultArea = document.getElementById("gachaResultContent");
+
 				for (var i = 1; i < candidates.length; i++) {
 					var item = candidates[i];
 					var str = item.generalCard.bean.cardName
@@ -3494,7 +3506,10 @@ var collectGacha = function(frame, config)
 				|| (card.bean.cardRank == 2 && !isCrappySilver(card)))
 			{
 				if (candidates.length > 0) {
-					frame.console.log(window.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName);
+					var str = window.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName;
+					frame.console.log(str);
+					appendLog(str, gachaResultArea);
+
 					gacha.setSelectDischargeCardIndex(candidates[0].replaceIndex);
 					gacha.gotoPageResult();
 					gotoNextStep();				
@@ -3516,58 +3531,34 @@ var collectGacha = function(frame, config)
 					}
 
 					var newFormation = calcBestFormation(frame, cardList, politicsCost, window.player.myData.leadership, window.primaryFormations, window.secondaryFormations, true);
-					if (newFormation.orderedList.indexOf(newCard) > -1) {
+					if (newFormation.orderedList.indexOf(newCard) < 0 && !keepForFuture(card) && !isPoliticsCard(card))
+					{
+						window.console.log("Gacha. No need to keep: "+card.bean.name);
+						gotoNextStep();				
+					}
+					else
+					{
 						appendLog("可替换武将.", gachaArea);
 						for (var i = 10; i < discardList.length; i++) {
 							var card2 = discardList[i];
-							if (newFormation.orderedList.indexOf(card2) < 0)
+							if (newFormation.orderedList.indexOf(card2) < 0 && !isPoliticsCard(card2.generalCard) && !keepForFuture(card2.generalCard))
 							{
 								var str = card2.generalCard.bean.cardName
 										  +((card2.generalCard.bean.cardRank|0)+1)
 										  +"."+((card2.playerGeneralCard.bean.season|0)+1)+"期|";
 								appendLog(str, gachaArea);
 
-								if (!isPoliticsCard(card2) && !keepForFuture(card2))		
-								{
-									frame.console.log(window.playerTag + ".Replace. "+card.bean.cardName+"=>"+card2.generalCard.bean.cardName);
-									gacha.setSelectDischargeCardIndex(card2.replaceIndex);
-									gacha.gotoPageResult();
-									gotoNextStep();	
-								}					
+								str = window.playerTag + ".Replace. "+card.bean.cardName+"=>"+card2.generalCard.bean.cardName;
+								frame.console.log(str);
+								appendLog(str, gachaResultArea);
+
+								gacha.setSelectDischargeCardIndex(card2.replaceIndex);
+								gacha.gotoPageResult();
+								gotoNextStep();	
 							}
 						}
 
 						logFormationScoreStr(newFormation, gachaArea, true);
-					}
-					else
-					{
-						if (!keepForFuture(card) && !isPoliticsCard(card))
-						{
-							window.console.log("Gacha. No need to keep: "+card.bean.name);
-							gotoNextStep();				
-						}
-						else
-						{
-							appendLog("可替换武将.", gachaArea);
-							for (var i = 10; i < discardList.length; i++) {
-								var card2 = discardList[i];
-								var found = false;
-								for (var j = 0; j < newFormation.orderedList.length; j++) {
-									if (newFormation.orderedList[j].generalCard.bean.generalCardId == card2.generalCard.bean.generalCardId)
-									{
-										found = true;
-										break;
-									}
-								};
-								if (!found)
-								{
-									var str = card2.generalCard.bean.cardName
-											  +((card2.generalCard.bean.cardRank|0)+1)
-											  +"."+((card2.playerGeneralCard.bean.season|0)+1)+"期|";
-									appendLog(str, gachaArea);									
-								}
-							}
-						}
 					}
 				}
 			}
