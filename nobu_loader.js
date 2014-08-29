@@ -749,7 +749,7 @@ var checkExploration1 = function(frame)
 			return;
 		}
 
-		if (result.maxFlag < 4000 && window.player.myData.eventProvisionsNum > 0)
+		if (result.maxFlag < 4000)// && window.player.myData.eventProvisionsNum > 0)
 		{
 			window.setTimeout(function() {
 				optimizePoliticsForExploration(getFrame());
@@ -906,7 +906,8 @@ var autoExploration = function(frame, config)
 
 	var checkExploration = function() {
 		var exploration = findChildScope(getRootScope(), function(childscope) { return typeof childscope.click_adjacent != "undefined"; });
-		if (!exploration || !exploration.userInfoData || !exploration.userInfoData.provisionAmount) {
+		if (!exploration || !exploration.userInfoData)// || !exploration.userInfoData.provisionAmount)
+		{
 			window.console.log("checkExploration");
 			window.setTimeout(checkExploration, 1000);
 			return;
@@ -1174,7 +1175,7 @@ var getCardRatio = function(card, value)
 {
 	if (card.bean.generalCardId == 10459) // 延沢満延4.
 	{
-		return 1.0;
+		return value;
 	}
 	else if (card.bean.generalCardId == 10424) // Name: 柴田勝家4
 	{
@@ -2894,10 +2895,6 @@ var doGacha = function(frame, config) {
 	if (gachaArea)
 		gachaArea.remove();
 
-	var gachaResultArea = document.getElementById("gachaResultContent");
-	if (gachaResultArea)
-		gachaResultArea.remove();
-
 	var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
 	if ((config.type == 2 && gacha.walletData.gameGold < 30)
 		|| (config.type == 0 && gacha.walletData.point < 100)
@@ -2932,7 +2929,7 @@ var doGacha = function(frame, config) {
 	var checkGachaResult = function() {
 		frame.console.log("Checking gacha result...");
 		var gacha = findChildScope(getRootScope(), function(childscope) { return typeof childscope.gachaReListup != "undefined"; });
-		if (!gacha.listupData || !gacha.listupData.entity || !gacha.listupData.entity.generalCardList)
+		if (!gacha || !gacha.listupData || !gacha.listupData.entity || !gacha.listupData.entity.generalCardList)
 			window.setTimeout(checkGachaResult, 2000);
 		else
 			collectGacha(frame, config);
@@ -3034,6 +3031,8 @@ var keepForFuture = function(card)
 		|| card.bean.generalCardId == 10539 // Name: 井伊直孝3
 		|| card.bean.generalCardId == 10248 // Name: 藤堂高虎3 
 		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	 8178
+		|| card.bean.generalCardId == 10244 // Name: 太田資正2
+		|| card.bean.generalCardId == 10355 // Name: 島清興3
 	;
 };
 
@@ -3051,9 +3050,9 @@ var isTopClassCard = function(card)
 		|| card.bean.generalCardId == 10216	 // 	後藤基次2	 5635
 		|| card.bean.generalCardId == 10267	 // 	服部正成2	 4747
 		|| card.bean.generalCardId == 10265	 // 	山本晴幸2	 4513
-		|| card.bean.generalCardId == 10254	 // 	長宗我部国親2 4022
-		|| card.bean.generalCardId == 10539 // Name: 井伊直孝3
+		|| card.bean.generalCardId == 10207 // Name: 真田幸隆2
 
+		|| card.bean.generalCardId == 10539 // Name: 井伊直孝3
 		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	 8178
 		|| card.bean.generalCardId == 10330 // Name: 下間頼廉3
 		|| card.bean.generalCardId == 10339	 // 	村上義清3 7748
@@ -3178,6 +3177,7 @@ var isSuperbBronze = function(card) {
 		|| card.bean.generalCardId == 10258	 // 	龍造寺隆信2
 
 		|| card.bean.generalCardId == 10210 // Name: 織田信秀2
+		|| card.bean.generalCardId == 10254	 // 	長宗我部国親2 4022
 	;
 };
 
@@ -3474,11 +3474,12 @@ var collectGacha = function(frame, config)
 				gachaArea = document.getElementById("gachaContent");
 
 				var gachaResultArea = document.getElementById("gachaResultContent");
-				if (gachaResultArea)
-					gachaResultArea.remove();
-				gachaResultArea = document.createElement('div');
-				gachaResultArea.id = "gachaResultContent";
-				window.document.getElementById("gachaResult").appendChild(gachaResultArea);
+				if (!gachaResultArea)
+				{
+					gachaResultArea = document.createElement('div');
+					gachaResultArea.id = "gachaResultContent";
+					window.document.getElementById("gachaResult").appendChild(gachaResultArea);
+				}
 				gachaResultArea = document.getElementById("gachaResultContent");
 
 				for (var i = 1; i < candidates.length; i++) {
@@ -3506,7 +3507,8 @@ var collectGacha = function(frame, config)
 				|| (card.bean.cardRank == 2 && !isCrappySilver(card)))
 			{
 				if (candidates.length > 0) {
-					var str = window.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName;
+					var str = window.playerTag + ".Replace. "+card.bean.cardName+"=>"+candidates[0].generalCard.bean.cardName
+																					 +"|"+(candidates[0].playerGeneralCard.bean.season+1)+"期|";
 					frame.console.log(str);
 					appendLog(str, gachaResultArea);
 
@@ -3548,13 +3550,15 @@ var collectGacha = function(frame, config)
 										  +"."+((card2.playerGeneralCard.bean.season|0)+1)+"期|";
 								appendLog(str, gachaArea);
 
-								str = window.playerTag + ".Replace. "+card.bean.cardName+"=>"+card2.generalCard.bean.cardName;
+								str = window.playerTag + ".Replace. "+card.bean.cardName+"=>"+card2.generalCard.bean.cardName
+																							 +"|"+(card2.playerGeneralCard.bean.season+1)+"期|";
 								frame.console.log(str);
 								appendLog(str, gachaResultArea);
 
-								gacha.setSelectDischargeCardIndex(card2.replaceIndex);
+								gacha.setSelectDischargeCardIndex(i);
 								gacha.gotoPageResult();
-								gotoNextStep();	
+								gotoNextStep();
+								break;
 							}
 						}
 
@@ -3621,6 +3625,10 @@ var prepareGacha = function(frame, config) {
 // type. {2: money, 0: normal}
 var startGacha = function(config, frame)
 {
+	var gachaResultArea = document.getElementById("gachaResultContent");
+	if (gachaResultArea)
+		gachaResultArea.remove();
+
 	maxGachaCount[config.type] = (!config.count) ? 1 : config.count;
 	curGachaCount[config.type] = 0;
  	nextGachaType = config.type;
