@@ -150,7 +150,9 @@ var createGame = function(url) {
 };
 
 var getFrame = function() {
+	var game = document.getElementById("game");
 	var frame = null;
+
 	if (typeof game != "undefined" && typeof game.contentWindow != "undefined")
 		frame = game.contentWindow;
 	else
@@ -359,10 +361,10 @@ var autoTutorialBase = function(frame, config)
             window.setTimeout(function() {
             	acquirePresents(frame, config);
 
-            	if (config && config.fancyGacha) {
-
-            	}
-				else {
+    //         	if (config && config.fancyGacha) {
+    //         	}
+				// else
+				{
 					getFrame().tutorialDone = true;
 				}
                 //window.location="http://mn.mobcast.jp/mn/#/invite/invite";
@@ -1067,7 +1069,8 @@ var baseScoreOfFormation = function(f)
 		score -= 100;
 	else if (f.bean.formationCardId == 16) // 雁行の陣
 		score -= 100;
-
+	else if (f.bean.formationCardId == 27)	// 組撃ち鉄砲陣3
+		score += 1000;
 	return score;
 };
 
@@ -1133,7 +1136,7 @@ var autoFormation = function(frame, fn)
 		}
 	};
 
-	window.primaryFormations = window.primaryFormations.sort(function(a,b) { return b.sum - a.sum; });
+//	window.primaryFormations = window.primaryFormations.sort(function(a,b) { return b.sum - a.sum; });
 	for (var key in window.primaryFormations) {
 		var f = window.primaryFormations[key];
 		window.console.log("优选阵型."+f.Id+"."+f.name+(f.level+1)+".统:"+f.leadership+".总:"+f.sum);
@@ -1328,7 +1331,7 @@ var logFormationScoreStr = function(f, logArea, nextSeason)
 		var data = {"name":card.generalCard.bean.cardName,"rank":card.generalCard.bean.cardRank,"season":season+1};
 		dataList.push(data);
 	}
-	var strPrefix = "战力: "+c_redPre+f.score+c_redSuf+"."+f.name+". 最大: "+f.maxCost+". 消耗: "+f.cost+". 内政: "+f.politicsStr+". ";
+	var strPrefix = "战力: "+c_redPre+f.score+c_redSuf+"."+f.name+". 最大: "+f.maxCost+". 消耗: "+f.cost+". ";//内政: "+f.politicsStr+". ";
 	appendLog(addCategoryHtml(strPrefix, dataList), logArea);
 };
 
@@ -1338,6 +1341,9 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 	for (var i = 0; i < cardList.length; i++) {
 		var card = cardList[i];
 		var generalCard = card.generalCard;
+
+		if (isPoliticsCard(generalCard))
+			continue;
 
 		var season = card.playerGeneralCard ? (card.playerGeneralCard.bean.season|0) : 0;
 		if (nextSeason)
@@ -1419,7 +1425,7 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 			return (b.generalCard.curData.offense + b.generalCard.curData.leadership * 1.1)
 				 - (a.generalCard.curData.offense + a.generalCard.curData.leadership * 1.1);
 		});
-		var toAdd = 12 - allList.length;
+		var toAdd = Math.min(12 - allList.length, otherList2.length);
 		for (var i = 0; i < toAdd; i++) {
 			allList.push(otherList2[i]);
 			frame.console.log("排阵.补充大将:"+getCardStr(otherList2[i])+". Ratio:"+otherList2[i].ratio);
@@ -1434,13 +1440,6 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 
 		if (f.orderedList)
 		{
-			var logArea = document.createElement('div');
-			logArea.id = "formationContent";
-			document.getElementById("formation").appendChild(logArea);
-			logArea = document.getElementById("formationContent");
-
-			logFormationScoreStr(f, logArea);
-
 			return 1;
 		}
 		else
@@ -1449,13 +1448,16 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 		}
 	}
 
-	var fcount = 0;
+	var fList = []; var fcount = 0;
 	var newFormation = null; var score = 0;
 	for (var key in priFormation)
 	{
 		var f = priFormation[key];
 		f.maxCost = maxCost + f.extraCost;
 		fcount += calcFormation(f);
+
+		if (f.orderedList)
+			fList.push(f);
 
 		if (f.score > score) {
 			score = f.score;
@@ -1471,12 +1473,25 @@ var calcBestFormation = function(frame, cardList, baseCost, maxCost, priFormatio
 			f.maxCost = maxCost + f.extraCost;
 			fcount += calcFormation(f);
 
+			if (f.orderedList)
+				fList.push(f);
+
 			if (f.score > score) {
 				score = f.score;
 				newFormation = f;
 			}
 		}	
 	}
+
+	fList = fList.sort(function(a,b) {return b.score - a.score;});
+	for (var i = 0; i < fList.length; i++) {
+		var f = fList[i];
+		var logArea = document.createElement('div');
+		logArea.id = "formationContent";
+		document.getElementById("formation").appendChild(logArea);
+		logArea = document.getElementById("formationContent");
+		logFormationScoreStr(f, logArea);
+	};
 
 	return newFormation;
 }
@@ -1626,6 +1641,7 @@ var validateGroup = function(f, cl)
 		leadership += matchData.leadership * cardList[i].ratio;
 		wisdom += matchData.wisdom * cardList[i].ratio;
 
+		var found = false;
 		for (var j = 0; j < requirements.length; j++) {
 			if (card.bean.armType == requirements[j].armType) {
 				offense += posBonus * cardList[i].ratio;
@@ -1633,20 +1649,27 @@ var validateGroup = function(f, cl)
 				leadership += posBonus * cardList[i].ratio;
 				wisdom += posBonus * cardList[i].ratio;
 				requirements.splice(j, 1);
+				found = true;
 				break;
 			}
-			else if (requirements[j].armType >= 1000) {
-				var code = requirements[j].armType - 1000;
-				if (((card.bean.armType/3)>>0) == code) {
-					offense += posBonus * cardList[i].ratio;
-					defense += posBonus * cardList[i].ratio;
-					leadership += posBonus * cardList[i].ratio;
-					wisdom += posBonus * cardList[i].ratio;
-					requirements.splice(j, 1);
-					break;
-				}
-			}
 		};
+
+		if (!found)
+		{
+			for (var j = 0; j < requirements.length; j++) {
+				if (requirements[j].armType >= 1000) {
+					var code = requirements[j].armType - 1000;
+					if (((card.bean.armType/3)>>0) == code) {
+						offense += posBonus * cardList[i].ratio;
+						defense += posBonus * cardList[i].ratio;
+						leadership += posBonus * cardList[i].ratio;
+						wisdom += posBonus * cardList[i].ratio;
+						requirements.splice(j, 1);
+						break;
+					}
+				}
+			};
+		}
 	};
 
 	for (var key in familyMap) {
@@ -2343,6 +2366,7 @@ var logOutInfo = function(frame, logFn) {
 		else {
 			frame.logtxt += ";" + frame.player.myData.division + frame.player.myData.leagueName;
 			frame.logtxt += ";奖励:" + sprintf("%03.0f", frame.player.myData.presentBoxCount);
+			frame.logtxt += ";官位:" + sprintf("%02.0f", (frame.player.myData.rank+1))+"|"+frame.player.myData.rankString;
 
 			getRankingData(frame, frame.logtxt);
 		}
@@ -2384,13 +2408,13 @@ var gatherInfo = function()
 		logArea = document.getElementById("logContent");
 
 		var logList = str.split(';');
-		appendLog(logList[3]+";"+logList[4], logArea);
-		appendLog(logList[5]+";"+logList[6]+";"+logList[7], logArea);
-		appendLog("今日:"+logList[8]+";"+logList[9]+";"+logList[10]+";"+logList[11], logArea);
-		appendLog(logList[12], logArea); // money
-		appendLog(logList[15]+";"+logList[16], logArea);
-		appendLog(logList[14], logArea); // politics
-		appendLog(logList[17], logArea); // formation stats
+		appendLog(logList[3]+";"+logList[4]+";"+logList[5], logArea);
+		appendLog(logList[6]+";"+logList[7]+";"+logList[8], logArea);
+		appendLog("今日:"+logList[9]+";"+logList[10]+";"+logList[11]+";"+logList[12], logArea);
+		appendLog(logList[13], logArea); // money
+		appendLog(logList[16]+";"+logList[17], logArea);
+		appendLog(logList[15], logArea); // politics
+		appendLog(logList[18], logArea); // formation stats
 
 		appendLog(addCategoryHtml("当前参战过期", window.playerInfo.cur.duty), logArea);
 		appendLog(addCategoryHtml("替补强将", window.playerInfo.topOnBench), logArea);
@@ -2420,6 +2444,12 @@ var startOptimiztePolitics = function()
 	doStartInterval(optimizePolitics, function(){advancePlayerBy(1)});
 };
 
+var startOptimiztePoliticsNextSeason = function()
+{
+	window.nextSeason = true;
+	doStartInterval(optimizePolitics, function(){advancePlayerBy(1)});
+};
+
 var optimizePolitics = function(frame)
 {
 	var url = getOrganizeURL();
@@ -2440,20 +2470,15 @@ var optimizePolitics = function(frame)
 			frame = getFrame();
 		}
 
-		var dstData = [];
-		dstData[0] = teamData.abilityEntity.politics1|0;
-		dstData[1] = teamData.abilityEntity.politics2|0;
-		dstData[2] = teamData.abilityEntity.politics3|0;
-		dstData = dstData.sort();
-		frame.console.log("Formation. Player politics: ["+dstData+"]");
-
-		var politicsCards = [];
+		var seasonDiff = window.nextSeason ? 1 : 0;
 		var familyMap = {};
+		var politicsCards = [];
+
 		for (var i = 0; i < teamData.positionArray.list.length; i++) {
 			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
 			if (i > 6 && i < 10) {
 				var values = card.generalCard.bean.politicses.split(',');
-				var val = values[card.playerGeneralCard.bean.season];
+				var val = values[card.playerGeneralCard.bean.season + seasonDiff];
 				card.politics = val|0;
 				card.currentIndex = i;
 				politicsCards.push(card);
@@ -2473,13 +2498,14 @@ var optimizePolitics = function(frame)
 
 		var swapId = 0;
 		var costLeft = teamData.abilityEntity.maxCost - teamData.abilityEntity.cost;
-		for (var i = 0; i < teamData.positionArray.list.length; i++) {
+		for (var i = 0; i < teamData.positionArray.list.length; i++)
+		{
 			var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
 			var generalCard = card.generalCard;
 			if (i > 9 && isPoliticsCard(generalCard))
 			{
 				var values = generalCard.bean.politicses.split(',');
-				var val = values[card.playerGeneralCard.bean.season];
+				var val = values[card.playerGeneralCard.bean.season + seasonDiff];
 				card.politics = val|0;
 				card.currentIndex = i;
 
@@ -2514,13 +2540,29 @@ var optimizePolitics = function(frame)
 			}
 		}
 
+		var logPolitics = function() {
+			var dstData = [];
+			for (var i = 0; i < teamData.positionArray.list.length; i++) {
+				var card = teamData.generalList.generalcards[teamData.positionArray.list[i]];
+				if (i > 6 && i < 10) {
+					var values = card.generalCard.bean.politicses.split(',');
+					var val = values[card.playerGeneralCard.bean.season + seasonDiff];
+					dstData.push(val|0);
+				}
+			}
+			dstData = dstData.sort();
+			frame.console.log(window.playerTag + ". Formation. Player politics: ["+dstData+"]");			
+		}
+
 		if (swapId > 0) {
 			window.setTimeout(function() {
-				frame.console.log(window.playerTag + ". Formation. Result: [" + teamData.abilityEntity.politics1 + ", "
-														 + teamData.abilityEntity.politics2 + ", "
-														 + teamData.abilityEntity.politics3 + "]");
+				logPolitics();
 				teamData.tapOkButton();
 			}, ++swapId * 2000);
+		}
+		else
+		{
+			logPolitics();
 		}
 
 		window.setTimeout(function() {
@@ -3452,7 +3494,7 @@ var collectGacha = function(frame, config)
 			});
 			filterCards(discardList, candidates, function(card2, index) {
 				var season = card2.playerGeneralCard.bean.season + 1;
-				return (season < 10 && card2.seasonData[season] == "2" && index > 9 && !noDropCard(card2.generalCard));
+				return (season < 10 && card2.seasonData[season] == "2" && index > 9 && !noDropCard(card2.generalCard) && !isHighPolitics(card2.generalCard));
 			});
 			filterCards(discardList, candidates, function(card2, index) {
 				return (card2.generalCard.bean.cardRank == 1
@@ -3955,6 +3997,46 @@ var startWeeklyGacha = function()
 	}, function(){advancePlayerBy(1)}, {'noTimeout':true});
 }
 
+var giftCardEvent = function(frame)
+{
+	var checkGiftCard = function()
+	{
+		game = document.getElementById("game");
+		var frame = game.contentWindow;
+		if (!frame || !frame.$)
+		{
+			window.setTimeout(checkGiftCard, 2000);
+			return;
+		}
+		else
+		{
+			if (frame.$("[id='mainImg']").length != 0)
+			{
+				callForNextPlayer(frame);				
+				return;
+			}
+			if (frame.$("form[name=frmMain]").length == 0)
+			{
+				window.setTimeout(checkGiftCard, 2000);
+				return;
+			}
+		}
+
+		var button = frame.$("[name='PRIOR_INSTALL']");
+		button.click();
+		window.setTimeout(function() {
+			callForNextPlayer(frame);
+		}, 5000);
+	}
+
+	frame.location = "http://gmpa.jp//regist.php?guid=ON&gid=1129";
+	checkGiftCard();
+}
+
+var startGiftCardEvent = function(frame)
+{
+	doStartInterval(giftCardEvent, function(){advancePlayerBy(1)});
+}
 
 window.realAlert = window.alert;
 window.alert = function(msg) { window.console.log("Redirect alert. "+msg); };
