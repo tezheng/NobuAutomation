@@ -3075,6 +3075,7 @@ var keepForFuture = function(card)
 		|| card.bean.generalCardId == 10105	 // 	武田勝頼3	 8178
 		|| card.bean.generalCardId == 10244 // Name: 太田資正2
 		|| card.bean.generalCardId == 10355 // Name: 島清興3
+		|| card.bean.generalCardId == 10133 // Name: 島津忠恒2 
 	;
 };
 
@@ -3489,9 +3490,9 @@ var collectGacha = function(frame, config)
 				var season = card2.playerGeneralCard.bean.season;
 				return (season < 10 && card2.seasonData[season] == "2" && !noDropCard(card2.generalCard));
 			});
-			filterCards(discardList, candidates, function(card2, index) {
-				return isCrappyCard(card2.generalCard) && index < 10;
-			});
+			// filterCards(discardList, candidates, function(card2, index) {
+			// 	return isCrappyCard(card2.generalCard) && index < 10;
+			// });
 			filterCards(discardList, candidates, function(card2, index) {
 				var season = card2.playerGeneralCard.bean.season + 1;
 				return (season < 10 && card2.seasonData[season] == "2" && index > 9 && !noDropCard(card2.generalCard) && !isHighPolitics(card2.generalCard));
@@ -3975,7 +3976,10 @@ var doGetInvitatoinInfo = function(frame) {
 		}
 
 		frame.console.log(window.playerTag+";邀请完成:"+invitation.inviteCount+";URL:"+invitation.inviteUrl);
-		callForNextPlayer(frame);
+		invitation.getInviteCampaignReward();
+		window.setTimeout(function(){
+			callForNextPlayer(frame);
+		}, 2000);
 	}
 
 	frame.location = getInvitationURL();
